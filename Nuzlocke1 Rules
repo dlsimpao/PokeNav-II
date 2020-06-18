@@ -1,0 +1,25 @@
+1. Fainting Pokemon are dead.
+2. Six Pokemon total
+3. No items during battle
+4. 
+
+
+
+Things to consider in Gen 3:
+1. All Dark, Dragon, Electric, Fire, Grass, Ice, Psychic, and Water moves are special moves.
+1. All Bug, Fighting, Flying, Ghost, Ground, Normal, Poison, Rock, and Steel moves are physical moves.
+
+code:
+specTypes <- c("Dark", "Dragon", "Electric", "Fire", "Grass", "Ice", "Psychic","Water")
+physTypes <- c("Bug", "Fighting", "Flying", "Ghost", "Ground", "Normal", "Poison", "Rock","Steel")
+
+
+
+2. Sleep lasts for 1 to 6 turns. Sleep Talk will not always advance the sleep counter, as detailed here.
+3. When the faster Pokemon faints, the opposing Pokemon does not get to move.
+4. Taunt only lasts for 2 turns.
+5. Encore lasts for 2 to 6 turns.
+6. Counter and Mirror Coat treat Hidden Power as physical, regardless of type.
+7. When a Pokemon faints, it gets replaced before the next Pokemon moves. If all non-fainted Pokemon have already moved, then the fainted Pokemon gets replaced before the end of the turn.
+8. Thunder Wave does not activate Volt Absorb.
+9. Rough Skin damage is 1/16.
