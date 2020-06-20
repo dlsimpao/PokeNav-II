@@ -26,7 +26,9 @@ allEmTypes <- c(specTypes,physTypes)
 
 allTypes <- c(allEmTypes,"Fairy")
 
-romGen <- c("I","II","III","IV","V","VI","VII","VIII")
+romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
+                 numerals = c("I","II","III","IV","V","VI","VII","VIII"),
+                 versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
 ##########################    Work from hoennDex   ############################
 
 # Scrape info from gen III
@@ -91,7 +93,7 @@ getGenMons_info <- function(genNo){
 
 #Helps find which evolutions exist in which generation
 
-allMons <- lapply(romGen, function(NUM) getGenMons_info(NUM)) %>% bind_rows
+allMons <- lapply(romGen$numerals, function(NUM) getGenMons_info(NUM)) %>% bind_rows
 # NatNo Name Type1 Type2 Evolves Gen GenX
 #save(allMons, file = "allMons.6.2020.RData")
 

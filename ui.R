@@ -28,12 +28,15 @@ ui <- fluidPage(
                  selectInput("mon2","Enter Pokemon","-"),
                  helpText("Gen 8 Not Included"),
                  selectInput("gen2","Select generation", c("All","I","II","III","IV","V","VI"), "All"),
+                 selectInput("learnset-filter2","Filter Learnset by Gen", c("-","I","II","III","IV","V","VI"), "All"),
+                 helpText("Defaults to the learnset in the generation the Pokemon is introduced"),
                  checkboxGroupInput("dex-filter", "Select Pokemon Type(s)", allTypes)
                ),
                mainPanel(
                  actionButton("learn2", "See Learnset"),
                  actionButton("dex-info2","See Dex Entry"),
                  helpText("Note: Move Categories were specified further in Generation 4 and beyond."),
+                 helpText("Only shows learnset in generation introduced."),
                  br(),
                  br(),
                  DT::dataTableOutput("tbl2")
@@ -50,7 +53,7 @@ ui <- fluidPage(
                           ),
                           tabPanel(
                             "TM Information",
-                            selectInput("genP3","Select generation", romGen, "III"),
+                            selectInput("genP3","Select generation", romGen$numerals, "III"),
                             helpText("TM information available for all generations"),
                             DT::dataTableOutput("tbl3.2")
                           )

@@ -1,53 +1,18 @@
 server <- function(input, output, session) {
+  
   ### Location by Generation ###
   intGen <- reactive({
-    if(input$gen == "I"){
-      1
-    }else if(input$gen == "II"){
-      2
-    }else if(input$gen == "III"){
-      3
-    }else if(input$gen == "IV"){
-      4
-    }else if(input$gen == "V"){
-      5
-    }else if(input$gen == "VI"){
-      6
-    }else if(input$gen == "VII"){
-      7
-    }else if(input$gen == "VIII"){
-      8
-    }else{
-      0
-    }
+    romGen %>% filter(numerals == input$gen) %>% pull(arabic)
   })
   
   # translates into generation version
   verGen <- reactive({
-    if(input$genP3 == "I"){
-      "red-blue"
-    }else if(input$genP3 == "II"){
-      "gold-silver"
-    }else if(input$genP3 == "III"){
-      "ruby-sapphire"
-    }else if(input$genP3 == "IV"){
-      "diamond-pearl"
-    }else if(input$genP3 == "V"){
-      "black-white"
-    }else if(input$genP3 == "VI"){
-      "x-y"
-    }else if(input$genP3 == "VII"){
-      "sun-moon"
-    }else if(input$genP3 == "VIII"){
-      "sword-shield"
-    }else{
-      ""
-    }
+    romGen %>% filter(numerals == input$genP3) %>% pull(versions)
   })
   
   
   location <- reactive({
-    req(input$gen %in% romGen)
+    req(input$gen %in% romGen$numerals)
 
     # if filter is used
     if (!is.null(input$`loc-filter`)) {
@@ -208,6 +173,10 @@ mons <- reactive({
 
 ########## Page 2 ############
   
+  intGen2 <- reactive({
+    romGen %>% filter(numeral == input$gen2) %>% pull(arabic)
+  })
+  
   p2Mons <- reactive({
     df <- allMons %>% filter(Gen <= 7, Name != "MissingNo.") #no learnset available for gen 8, limit to gen 6 for consistency
     
@@ -225,17 +194,36 @@ mons <- reactive({
     
   })
   
+  #used in learnsetP2
+  genIntro <- reactive({
+    req(input$mon2 != "-")
+    allMons %>% filter(Name == input$mon2) %>% pull(GenX)
+  })
+  
+  genIntroNumber <- reactive(romGen %>% filter(numerals == genIntro()) %>% pull(arabic))
+  
+  genLearnset2 <- reactive(romGen %>% filter(arabic >= genIntroNumber()) %>% pull(numerals))
   
   learnsetP2 <- eventReactive(input$learn2,{
     req(input$mon2 != "-")
     
-    gen <- allMons %>% filter(Name == input$mon2) %>% pull(GenX)
     
-    getLearnset(input$mon2, gen) #add specific generation here <----------------------
+    tryCatch({
+      getLearnset(input$mon2, input$`learnset-filter2`)
+    }, error = function(err){
+      getLearnset(input$mon2, genIntro())
+    }, warning = function(warn){
+      print("Try something else")
+    })
+    
   })
   
   observe({
     updateSelectInput(session,"mon2", choices = c("-", p2Mons()))
+  })
+  
+  observe({
+    updateSelectInput(session,"learnset-filter2", choices = genLearnset2(), selected = genIntro())
   })
   
   
