@@ -125,7 +125,7 @@ getItemsInfo <- function(psyGen = "rs"){
     filter(!str_detect(Item,"(Main Items|Name)")))
 }
 
-gen3Items <- (getItemsInfo())
+(gen3Items <- (getItemsInfo()))
 ```
 
 # Request TM descriptions from API

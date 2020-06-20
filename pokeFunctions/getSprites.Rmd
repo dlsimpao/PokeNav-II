@@ -1,0 +1,46 @@
+#Sprites
+
+#Scrape sprites from Pokemon DB along with shinies
+- Figure out what to do with Pokemon with different formes
+```{r}
+h2 <- read_html("https://pokemondb.net/pokedex/shiny")
+
+norm_shiny_sprites <- h2 %>% 
+  html_nodes("span.infocard-lg-img") %>% 
+  html_nodes("span") %>% 
+  html_attr("data-src")
+
+appearance <- norm_shiny_sprites %>% 
+  gsub("(https://img.pokemondb.net/sprites/home/)(.*)/(.*).png$","\\2",.)
+
+name <- norm_shiny_sprites %>% 
+  gsub("(https://img.pokemondb.net/sprites/home/)(.*)/(.*).png$","\\3",.) %>% 
+  gsub("-"," ",.) %>% str_to_title()
+
+#Edge cases
+name <- name %>% 
+  gsub("(Mr|Jr)","\\1.",.) %>% 
+  gsub("(Ho Oh)","Ho-Oh",.) %>% 
+  gsub("(Farfetchd)","Farfetch'd",.)
+
+NS_sprites <- tibble(Name = name, Class = appearance, Url = norm_shiny_sprites)
+```
+
+#Fix edge cases
+```{r}
+test <- left_join(allMons, NS_sprites)
+test[which(is.na(test$Url)),]$Name
+
+#pattern
+pattern = "Deoxys"
+
+allMons$Name %>% str_subset(pattern)
+name %>% str_subset(pattern)
+
+(Nas <- sum(is.na(test$Url)))
+```
+
+#Different Formes
+```{r}
+allMons
+```

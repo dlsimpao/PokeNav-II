@@ -36,8 +36,7 @@ ui <- fluidPage(
                  helpText("Note: Move Categories were specified further in Generation 4 and beyond."),
                  br(),
                  br(),
-                 DT::dataTableOutput("tbl2"),
-                 DT::dataTableOutput()
+                 DT::dataTableOutput("tbl2")
                )
              ),
              tabPanel(
