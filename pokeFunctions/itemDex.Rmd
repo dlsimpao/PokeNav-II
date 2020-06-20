@@ -1,0 +1,175 @@
+# Item Dex
+
+#Mixture of API calls and scraping
+
+
+#Item info (use, location)
+- TMs
+- Berries
+- Boosting items
+- X-items
+
+
+```{r, message = FALSE}
+library(tidyverse)
+library(rvest)
+library(httr)
+```
+
+# Item Info
+- scrape pokemondb
+```{r}
+hitem <- read_html("https://pokemondb.net/item/all")
+
+hitems <- hitem %>%
+  html_nodes("table.data-table.block-wide") %>%
+  html_table() %>%
+  as.data.frame()
+
+hitems
+```
+
+# Item Info (b)
+- API
+```{r}
+
+```
+
+#Scraping for obtainable TMs
+- Emerald
+```{r}
+#all possible names
+genNames <- c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield")
+#name of interest
+genName = "ruby-sapphire"
+
+getTMInfo <- function(genName) {
+  hTM <- read_html(str_glue("https://pokemondb.net/{name}/tms", name = genName))
+  TMs <- hTM %>%
+    html_nodes("table.data-table") %>%
+    .[[1]] %>%
+    html_table() %>%
+    as_tibble()
+  (TMs <- TMs %>%
+    select(TM, Name, Type, Power, `Acc.`, PP, Location) %>%
+    mutate(
+      Location = case_when(
+        grepl("\n", Location) ~ gsub("\n", ";", Location),
+        TRUE ~ Location
+      ),
+      Version = genName,
+      `Item Class` = "TM"
+    ))
+}
+
+(allTMs_byGen <- lapply(genNames, function(x) getTMInfo(x)) %>% bind_rows())
+allTMs_byGen$Version %>% unique
+```
+
+#Emerald Items
+- scrape from psypokes
+```{r}
+psyNames <- c("rby", "gsc", "rs", "dp", "bw", "xy")
+
+# Note each page has different structure
+# Function only applies to gen 3
+psyGen = "rs"
+getItemsInfo <- function(psyGen = "rs"){
+  hEmItems <- read_html(str_glue("http://www.psypokes.com/{name}/items.php", name = psyGen))
+  
+  Market <- hEmItems %>% 
+    html_nodes("table.psypoke") %>% 
+    .[[1]] %>% 
+    html_table() %>% 
+    select(2,4,5) %>% 
+    mutate(`Item Class` = "Market")
+  
+  Held <- hEmItems %>% 
+    html_nodes("table.psypoke") %>% 
+    .[[2]] %>% 
+    html_table() %>% 
+    select(2:4) %>% 
+    mutate(`Item Class` = "Held")
+  
+  Balls <- hEmItems %>% 
+    html_nodes("table.psypoke") %>% 
+    .[[3]] %>% 
+    html_table() %>% 
+    select(2:4) %>% 
+    mutate(`Item Class` = "Ball")
+  
+  Mail <- hEmItems %>% 
+    html_nodes("table.psypoke") %>% 
+    .[[4]] %>% 
+    html_table() %>% 
+    select(2:4) %>% 
+    mutate(`Item Class` = "Mail")
+  
+  Base <- hEmItems %>% 
+    html_nodes("table.psypoke") %>% 
+    .[[6]] %>% 
+    html_table() %>% 
+    select(2:4) %>% 
+    mutate(`Item Class` = "Secret Base",
+           X3 = "Decor")
+  
+  cNames <- c("Item","Desc","Location","`Item Class`")
+  
+  colnames(Market) <- cNames
+  colnames(Held) <- cNames
+  colnames(Balls) <- cNames
+  colnames(Mail) <- cNames
+  colnames(Base) <- cNames
+  
+  (genItems <- bind_rows(Market, Held, Balls, Mail, Base) %>% 
+    filter(!str_detect(Item,"(Main Items|Name)")))
+}
+
+gen3Items <- (getItemsInfo())
+```
+
+# Request TM descriptions from API
+```{r}
+#Server Error 500 - test again later
+dbMoveNames <- allTMs_byGen %>% filter(Version == "ruby-sapphire") %>% pull(Name) %>% str_to_lower() %>% gsub(" ","-",.) 
+
+getTMDesc <- function(TMName){
+  rTM <- GET(str_glue("https://pokeapi.co/api/v2/move/{name}/", name = TMName))
+  stop_for_status(rTM)
+  jTM <- content(rTM, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+  print(jTM$name)
+
+  df <- tibble(Name = jTM$name %>% gsub("-"," ",.) %>% str_to_title, Desc = jTM$effect_entries$short_effect)
+}
+
+allTMDesc <- lapply(dbMoveNames, function(name) getTMDesc(name)) %>% bind_rows()
+```
+
+# Scrape TM descriptions from Psypoke
+```{r}
+psyName = "rs"
+hTM <- read_html(str_glue("http://www.psypokes.com/{name}/tmhm.php", name = psyName))
+gen3TMs <- hTM %>% 
+  html_nodes("table.psypoke") %>% 
+  .[[1]] %>% 
+  html_table() %>% 
+  as_tibble() %>% 
+  rename(Item = X2, Desc = X6)%>% 
+  select(Item, Desc) %>% 
+  filter(!str_detect("Move",Item)) %>% 
+  separate(Desc, c("Desc","Location"), sep = "[()]") %>% 
+  mutate(Class = "TM")
+  
+```
+
+Combine web scraped information from PokemonDB and Psypokes
+```{r}
+names(gen3Items)
+names(gen3TMs)
+
+gen3_Findable_Items <- bind_rows(gen3Items,gen3TMs)
+
+save(gen3_Findable_Items, file = "Gen3.Findable.Items.RData")
+```
+
+

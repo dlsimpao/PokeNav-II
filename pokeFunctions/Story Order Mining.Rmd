@@ -1,0 +1,38 @@
+```{r, message = FALSE}
+library(tidyverse)
+library(tidytext)
+
+```
+
+```{r}
+fileName = "Story Order"
+
+txt <- read.delim2("Story Order", header = FALSE, sep= "\n")
+
+gamePart <-txt$V1 %>% 
+  gsub("Part.\\d{,2}( - )","",.) %>% 
+  strsplit(", ")
+
+gamePart[21]
+
+temp = list()
+for (i in seq(21)){
+  temp <- append(temp,unlist(gamePart[[i]]))
+}
+temp %>% 
+  case_when(
+    grepl("Littleroot",.) ~ gsub("Littleroot","littleroot-",.),
+    TRUE ~ .
+  )
+
+
+# routes
+(routes <- temp %>% 
+  str_subset("\\d")%>% 
+  gsub("\\(.*\\)","",.))
+
+temp %>% 
+  str_to_lower() %>% 
+  gsub("\\.? ","-",.) 
+```
+

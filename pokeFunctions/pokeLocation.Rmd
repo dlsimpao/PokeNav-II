@@ -1,0 +1,495 @@
+#Cannot webscrape Serebii
+
+```{r, message = FALSE}
+library(tidyverse)
+library(jsonlite)
+library(lubridate)
+library(httr)
+library(rvest)
+
+#library(parallel)
+
+load("api.6.2020.RData")
+```
+
+
+# Variables
+- Generation Dex
+
+- list of learnsets by Pokemon in GEN 3
+  -(https://bulbapedia.bulbagarden.net/wiki/Grovyle_(Pok%C3%A9mon)/Generation_III_learnset#By_leveling_up)
+  
+  -create a list of learnsets by Pokemon [Not Done]
+   - do API requests, make relational data frames
+
+- list of available Pokemon by story/game progression/routes
+  -(https://bulbapedia.bulbagarden.net/wiki/Appendix:Emerald_walkthrough/Section_1)
+
+- location filters
+
+- list of learnsets by evolution
+
+- locations for gen7 and gen8
+
+# 1. Gen Dex
+```{r}
+#eMons - list of every Pokemon in emerald with types and evolutions, potentially with japanese names and field notes
+
+getGenMons_info <- function(genNo){
+  h <- read_html(str_glue("https://en.wikipedia.org/wiki/List_of_generation_{num}_Pok%C3%A9mon", num = genNo), encoding = "UTF-8")
+  
+  genDigit <- case_when(
+    genNo == "I" ~ 1,
+    genNo == "II" ~ 2,
+    genNo == "III" ~ 3,
+    genNo == "IV" ~ 4,
+    genNo == "V" ~ 5,
+    genNo == "VI" ~ 6,
+    genNo == "VII" ~ 7,
+    genNo == "VIII" ~ 8,
+    TRUE ~ 0
+  )
+  
+  if(genDigit != 7){
+    genMons <- h %>%
+      html_nodes("table") %>%
+      .[[2]] %>%
+      html_table(fill = TRUE) %>%
+      as.data.frame() 
+  }else{
+    genMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[3]] %>% 
+      html_table(fill = TRUE) %>% 
+      as.data.frame()
+  }
+  
+  colnames(genMons) <- c("Name","Name2","NatNo","Type1","Type2","Evolves","Notes")
+  
+  
+  
+  (eMons <- genMons %>%
+      slice(2:nrow(.)) %>% 
+      select(NatNo, Name, Type1, Type2, Evolves) %>%
+      mutate(
+        Type2 = case_when(
+          Type1 == Type2 ~ "",
+          grepl("Fairy", Type2) ~ gsub(".*", "Fairy (Gen 6 and on)", Type2),
+          TRUE ~ Type2
+        ),
+        Evolves = case_when(
+          grepl("Gardevoir", Evolves) ~ gsub(".*", "Gardevoir,Gallade",Evolves),
+          grepl("Ninjask", Evolves) ~ gsub(".*", "Ninjask,Shedinja", Evolves),
+          grepl("Glalie", Evolves) ~ gsub(".*", "Glalie,Frosslass", Evolves),
+          grepl("Huntail", Evolves) ~ gsub(".*", "Huntail,Gorebyss", Evolves),
+          grepl("\\(", Evolves) ~ gsub(".\\(.*\\)","",Evolves) ,
+          grepl("\\[", Evolves) ~ gsub("\\[.*","", Evolves),
+          # grepl("(Mega|End|Obs|No|Primal)", Evolves) ~ gsub(".*","", Evolves),
+          TRUE ~ Evolves
+        ),
+        Gen = genDigit,
+        GenX = genNo
+      ) %>%
+      distinct(Name, .keep_all = TRUE)) 
+}
+
+(getGenMons_info("III"))
+```
+
+```{r}
+allMons <- lapply(c("I","II","III","IV","V","VI","VII","VIII"), function(NUM) getGenMons_info(NUM)) %>% bind_rows
+
+save(allMons, file = "allMons.6.2020.RData")
+```
+
+
+#2. Scrape Learnset
+
+```{r}
+#4
+mon = "Magikarp"
+h2 <- read_html(str_glue("https://bulbapedia.bulbagarden.net/wiki/{mon}_(Pok%C3%A9mon)/Generation_III_learnset#By_leveling_up"), mon = mon)
+
+# By Level
+
+
+
+byLevel <- h2 %>% 
+  html_nodes("table.sortable") %>% 
+  html_table() %>% 
+  as.data.frame() %>% 
+  select(1:6)
+
+#Fix up values
+byLevel <- byLevel %>% 
+  mutate(
+  `Acc.` = case_when(
+    grepl("\\d*}}",`Acc.`) ~ gsub("\\d*}}","",`Acc.`),
+    TRUE ~ `Acc.`
+  ),
+  `Pwr.` = case_when(
+    grepl("—",`Pwr.`) ~ gsub(".*","—",`Pwr.`),
+    grepl("^0",`Pwr.`) ~ substring(`Pwr.`, 4, 5),
+    TRUE ~ substring(`Pwr.`, 0, 3)
+  ),
+  Level = case_when(
+    TRUE ~ as.character(Level))
+  )
+
+(byLevel <- byLevel %>% mutate(
+  Level = substring(Level, 0, nchar(Level)/2),
+  PP = as.character(PP)
+) %>% 
+  as_tibble())
+```
+
+```{r}
+byMachine <- h2 %>% 
+  html_nodes("table.roundy") %>% 
+  .[[3]] %>% 
+  html_table(fill = TRUE) %>% 
+  as_tibble %>%
+  slice(5:nrow(.)) %>% 
+  select(3:7) 
+
+
+colnames(byMachine) <- slice(byMachine,1)
+(byMachine <- 
+  byMachine %>% 
+  as_tibble() %>% 
+  mutate(Level = ""))
+```
+
+```{r}
+byBreed <- h2 %>% 
+  html_nodes("table.roundy") %>% 
+  .[[5]] %>% 
+  html_table(fill = TRUE) %>% 
+  as_tibble() %>% 
+  slice(5:nrow(.)) %>% 
+  select(2:6)
+
+colnames(byBreed) <- slice(byBreed,1)
+
+byBreed <-
+  byBreed %>% 
+  slice(2:nrow(.)-1) %>% 
+  as_tibble() %>% 
+  mutate(Level = "")
+
+learnset <- bind_rows(byLevel, byMachine, byBreed)
+View(learnset)
+
+
+```
+
+# Function form of operations above
+
+```{r function}
+Mon = "Magikarp"
+getLearnset <- function(Mon, gen = "III") {
+  h <- read_html(str_glue("https://bulbapedia.bulbagarden.net/wiki/{mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset#By_leveling_up",
+    mon = Mon, gen = gen
+  ))
+
+  # By Level
+
+  byLevel <- h %>%
+    html_nodes("table.sortable") %>%
+    html_table() %>%
+    as.data.frame() %>%
+    select(1, Move, Type, `Pwr.`, `Acc.`, PP)
+
+  colnames(byLevel) <- c("Level", "Move", "Type", "Pwr.", "Acc.", "PP")
+
+  # Fix up values
+  byLevel <- byLevel %>%
+    mutate(
+      `Acc.` = case_when(
+        grepl("\\d*}}", `Acc.`) ~ gsub("\\d*}}", "", `Acc.`),
+        TRUE ~ `Acc.`
+      ),
+      `Pwr.` = case_when(
+        grepl("—", `Pwr.`) ~ gsub(".*", "—", `Pwr.`),
+        grepl("^0", `Pwr.`) ~ substring(`Pwr.`, 4, 5),
+        TRUE ~ substring(`Pwr.`, 0, 3)
+      ),
+      Level = case_when(
+        TRUE ~ as.character(Level)
+      )
+    )
+
+  byLevel <- byLevel %>%
+    mutate(
+      Level = substring(Level, 0, nchar(Level) / 2),
+      PP = as.character(PP),
+      Method = "Level"
+    ) %>%
+    as_tibble()
+
+
+  # By Machine
+
+  byMachine <- h %>%
+    html_nodes("table.roundy") %>%
+    .[[3]] %>%
+    html_table(fill = TRUE) %>%
+    as_tibble() %>%
+    slice(5:nrow(.)) %>%
+    select(3:7)
+
+
+  colnames(byMachine) <- slice(byMachine, 1)
+  byMachine <-
+    byMachine %>%
+    as_tibble() %>%
+    mutate(
+      Level = "",
+      Method = "Machine"
+    ) 
+
+  byBreed <- h %>%
+    html_nodes("table.roundy") %>%
+    .[[5]] %>%
+    html_table(fill = TRUE) %>%
+    as_tibble() %>%
+    slice(5:nrow(.)) %>%
+    select(2:6)
+
+  colnames(byBreed) <- slice(byBreed, 1)
+
+  byBreed <- byBreed %>%
+    as_tibble() %>%
+    mutate(
+      Level = "",
+      Method = "Breed"
+    )
+
+  learnset <- bind_rows(byLevel, byMachine, byBreed)
+  as_tibble(learnset) %>% 
+    filter(!str_detect(Type, "(Type|Bold)"))
+}
+View(getLearnset("Magikarp"))
+
+```
+
+
+# 3. Pokemon by Area
+
+ - Sort by region by generation
+ - Get locations by region
+ - Get location areas by locations
+ - Get Pokemon encounters by location - Do through app since multiple areas exist in some locations
+
+# 4.
+
+
+- scraping
+```{r}
+a = c("I","II","III")
+a <- case_when(
+  a == "I" ~ 1,
+  a == "II" ~ 2,
+  a == "III" ~ 3,
+  TRUE  ~ 4
+)
+
+
+r <- GET(str_glue("https://pokeapi.co/api/v2/generation/{id}/", id = 3))
+stop_for_status(r)
+
+jen3 <- content(r, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+jen3$pokemon_species
+jen3$abilities
+jen3$moves
+
+rregions <- GET(str_glue("https://pokeapi.co/api/v2/region/{id}", id = 7))
+stop_for_status(rregions)
+jregions <- content(rregions, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+
+#locations in generation 3
+(locations = jregions$locations$name)
+
+rlocations <- GET(str_glue("https://pokeapi.co/api/v2/location/{name}/", name = "alola-route-1")) 
+stop_for_status(rlocations)
+jlocations <- content(rlocations, type = "text", encoding = "UTF-8") %>%  fromJSON(flatten = TRUE)
+
+location_areas = jlocations$areas$name
+
+rlocation_area <- GET(str_glue("https://pokeapi.co/api/v2/location-area/{name}/", name = location_areas))
+stop_for_status(rlocation_area)
+jlocation_area <- content(rlocation_area, type = "text", encoding = "UTF-8") %>%  fromJSON(flatten = TRUE)
+
+pokemon_by_area <- jlocation_area$pokemon_encounters$pokemon.name
+```
+# Find locations without areas and filter them out
+
+```{r}
+loc_test <- sapply(locations, function(x) getLocationAreas(x)) 
+loc_test[!is.null(loc_test)]
+compact(loc_test)
+```
+
+# Functions <- Pokemon by location area
+- functions, scraping, and clusters
+```{r}
+
+getLocations <- function(genNo) {
+  genNo <- case_when(
+    genNo == "I" ~ 1,
+    genNo == "II" ~ 2,
+    genNo == "III" ~ 3,
+    genNo == "IV" ~ 4,
+    genNo == "V" ~ 5,
+    genNo == "VI" ~ 6,
+    genNo == "VII" ~ 7,
+    genNo == "VIII" ~ 8,
+    TRUE ~ 0
+  )
+  rregions <- GET(str_glue("https://pokeapi.co/api/v2/region/{id}", id = genNo))
+  stop_for_status(rregions)
+  jregions <- content(rregions, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+
+  # locations in generation 3
+  locs <- jregions$locations$name
+}
+#list of locations
+alolaLoc <- (getLocations("VII"))
+```
+
+```{r}
+loc = alolaLoc[2]
+getLocationAreas <- function(loc){
+  rlocations <- GET(str_glue("https://pokeapi.co/api/v2/location/{name}/", name = loc)) 
+  stop_for_status(rlocations)
+  jlocations <- content(rlocations, type = "text", encoding = "UTF-8") %>%  fromJSON(flatten = TRUE)
+  location_areas <- jlocations$areas$name
+  
+  df <- data.frame(location_areas) %>% mutate(name = loc)
+}
+
+(getLocationAreas(alolaLoc[1]))
+alolaArea <- sapply(alolaLoc, function(loc) getLocationAreas(loc))
+alolaArea2 <- compact()
+```
+
+```{r}
+getAreaMons <- function(area){
+  rlocation_area <- GET(str_glue("https://pokeapi.co/api/v2/location-area/{name}/", name = area))
+  stop_for_status(rlocation_area)
+  jlocation_area <- content(rlocation_area, type = "text", encoding = "UTF-8") %>%  fromJSON(flatten = TRUE)
+  pokemon_by_area <- jlocation_area$pokemon_encounters$pokemon.name %>% gsub("-"," ",.) %>% str_to_title()
+  data.frame(pokemon_by_area) %>% 
+    rename(Pokemon = pokemon_by_area)
+}
+
+
+
+
+cl <- makeCluster(4)
+clusterEvalQ(cl, {
+  library(tidyverse)
+  library(jsonlite)
+  library(lubridate)
+  library(httr)
+  library(rvest)
+  NULL
+})
+
+clusterExport(cl,c("getLocationAreas","getAreaMons","EmLoc"), envir = environment())
+
+
+
+
+EmLocAreas <- parSapply(cl,EmLoc, function(loc) getLocationAreas(loc))
+clusterExport(cl,c("EmLocAreas"), envir = environment())  
+
+stopCluster(cl)
+
+(getAreaMons("petalburg-city-area"))
+```
+
+# 4. Categorize and sort
+- paste(collapse)
+```{r}
+#For Emerald, filtering
+
+a <- c("cities/towns","routes","other") 
+
+EmLoc
+
+pattern <- c("(city|town)","(route)")
+#16 cities and towns
+EmLoc %>% str_subset("(city|town)")
+#34 routes
+EmLoc %>% str_subset("(route)")
+#the rest
+EmLoc %>% str_subset("(city|town|route)", negate = TRUE)
+
+EmLoc %>% str_subset("^((?!city|town|route).)*$")
+
+EmLoc %>% str_subset(paste(pattern, collapse = "|"))
+```
+
+# 5. Learnset by Evolutions
+# Match Evolutions
+
+```{r}
+revol <- GET(str_glue("https://pokeapi.co/api/v2/evolution-chain/{id}/", id = 1))
+stop_for_status(revol)
+jevol <- content(revol, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+jevol$chain$evolves_to$species.name
+jevol$chain$evolves_to$evolves_to
+```
+
+
+# 6. Scrape Locations for Gen 7 and 8
+- scrape from (PokemonDB)
+- possible to get by area, but needs customization per page
+- get all pokemon by location (not location area)
+```{r}
+#reference
+alolaLoc <- (getLocations("VII"))
+
+#scraping
+h <- read_html("https://pokemondb.net/location#tab-alola")
+alolaLinks <- h %>% 
+  html_nodes("div#loc-alola") %>% 
+  html_nodes("a") %>% 
+  html_attr("href")
+
+#test first
+h2 <- read_html(paste0("https://pokemondb.net/",alolaLinks[1]))
+
+#all location areas
+areas <- h2 %>% 
+  html_nodes("h2") %>% 
+  html_text()
+
+#pokemon by area
+h2 %>% 
+  html_nodes("table.data-table") %>% 
+  .[[7]] %>% 
+  html_table()
+
+# Function - Pokemon by location (not area)
+
+h <- read_html("https://pokemondb.net/location#tab-alola")
+alolaLinks <- h %>% 
+  html_nodes("div#loc-alola") %>% 
+  html_nodes("a") %>% 
+  html_attr("href")
+
+getG7Mon <- function(loc_link){
+  h <- read_html(paste0("https://pokemondb.net/",loc_link))
+  df <- h %>% 
+    html_nodes("a.ent-name") %>% 
+    html_text() %>% 
+    as_tibble()
+  df %>% mutate(src = loc_link %>% gsub("(/location/)","",.)) %>% 
+    rename(Name = value)
+}
+alola_byloc <- lapply(alolaLinks,function(link) getG7Mon(link)) %>% bind_rows()
+save(alola_byloc, file = "alolaMon.RData")
+```
+

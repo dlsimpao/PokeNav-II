@@ -299,7 +299,7 @@ getLearnset <- function(Mon, gen = "III") {
         TRUE ~ `Pwr.`
       )
     ) %>%
-    select("Move", "Type", "Cat.", "Pwr.", "Acc.", "PP", "Method")
+    select("Level", "Move", "Type", "Cat.", "Pwr.", "Acc.", "PP", "Method")
 }
 
 
@@ -453,7 +453,8 @@ getItemsInfo <- function(psyGen = "rs"){
     .[[6]] %>% 
     html_table() %>% 
     select(2:4) %>% 
-    mutate(Class = "Secret Base")
+    mutate(Class = "Secret Base",
+           X3 = "Decor")
   
   cNames <- c("Item","Desc","Location","Class")
   

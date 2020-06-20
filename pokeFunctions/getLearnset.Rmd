@@ -1,0 +1,207 @@
+```{r, message = FALSE}
+library(tidyverse)
+library(httr)
+library(rvest)
+```
+
+# Function for getting learnset for Pokemon in a specific generation
+
+# Issues
+ - Category based on types prior to generation 3
+ - Inconsistent column names
+ - Learned
+  - tryCatch statement returns stuff
+```{r function}
+# Mon = "Gallade"
+# gen = "VI"
+
+# https://bulbapedia.bulbagarden.net/wiki/Melmetal_(Pok%C3%A9mon)/Generation_VII_learnset#By_TM.2FHM
+
+Mon <- "Magikarp"
+gen <- "III"
+
+# Special cases: MelMetal, Meltan, MissingNo
+getLearnset <- function(Mon, gen = "III") {
+  if (Mon %in% c("Melmetal", "Meltan")) {
+    link <- "https://bulbapedia.bulbagarden.net/wiki/{mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset#By_TM.2FHM"
+  } else {
+    link <- "https://bulbapedia.bulbagarden.net/wiki/{mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset#By_leveling_up"
+  }
+  h <- read_html(str_glue(link,
+                          mon = Mon, gen = gen
+  ))
+  
+  gen <- case_when(
+    gen == "I" ~ 1,
+    gen == "II" ~ 2,
+    gen == "III" ~ 3,
+    gen == "IV" ~ 4,
+    gen == "V" ~ 5,
+    gen == "VI" ~ 6,
+    gen == "VII" ~ 7,
+    gen == "VIII" ~ 8,
+    TRUE ~ 0
+  )
+  
+  # By Level
+  if (gen > 3) {
+    byLevel <- h %>%
+      html_node("table.sortable") %>%
+      html_table() %>%
+      as.data.frame() %>%
+      select(1, Move, Type, `Cat.`, `Pwr.`, `Acc.`, PP)
+    
+    colnames(byLevel) <- c("Level", "Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
+  } else {
+    byLevel <- h %>%
+      html_node("table.sortable") %>%
+      html_table() %>%
+      as.data.frame()
+    
+    byLevel <- tryCatch({
+      byLevel <- byLevel %>%
+        select(1, Move, Type, Power, Accuracy, PP) %>%
+        mutate(`Cat.` = "Depends on Type")
+    },error = function(err){
+        byLevel <- byLevel %>%
+          select(1, Move, Type, `Pwr.`, `Acc.`, PP) %>%
+          mutate(`Cat.` = "Depends on Type")
+    },warning = function(cond){
+      message("Try something else")
+    })
+    
+    colnames(byLevel) <- c("Level", "Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
+    # if (gen < 3) {
+    #   byLevel <- byLevel %>%
+    #     select(1, Move, Type, Power, Accuracy, PP) %>%
+    #     mutate(`Cat.` = "Depends on Type")
+    # } else {
+    #   byLevel <- byLevel %>%
+    #     select(1, Move, Type, `Pwr.`, `Acc.`, PP) %>%
+    #     mutate(`Cat.` = "Depends on Type")
+    #}
+    colnames(byLevel) <- c("Level", "Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
+  }
+  
+  # Fix up values
+  byLevel <- byLevel %>%
+    mutate(
+      Level = substring(Level, 0, nchar(as.character(Level)) / 2),
+      `Pwr.` = as.character(`Pwr.`),
+      PP = as.character(PP),
+      Method = "Level"
+    ) %>%
+    as_tibble()
+  
+  
+  # By Machine
+  if (gen > 3) {
+    byMachine <- h %>%
+      html_nodes("table.roundy") %>%
+      .[[3]] %>%
+      html_table(fill = TRUE) %>%
+      as_tibble() %>%
+      slice(5:nrow(.)) %>%
+      select(3:8)
+    colnames(byMachine) <- c("Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
+  } else {
+    byMachine <- h %>%
+      html_nodes("table.roundy") %>%
+      .[[3]] %>%
+      html_table(fill = TRUE) %>%
+      as_tibble() %>%
+      slice(5:nrow(.)) %>%
+      select(3:7) %>%
+      mutate(cat = "Depends on Type")
+    colnames(byMachine) <- c("Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
+  }
+  
+  
+  
+  byMachine <- byMachine %>%
+    as_tibble() %>%
+    mutate(
+      Level = "",
+      Method = "Machine"
+    )
+  
+  if (Mon %in% c("Meltan", "Melmetal")){
+    byBreed <- tibble(
+      Move = "NA",
+      Type = "NA",
+      `Pwr.` = "NA",
+      `Acc.` = "NA",
+      PP = "NA",
+      `Cat.` = "NA",
+    )
+  } else if (gen > 3) {
+    byBreed <- h %>%
+      html_nodes("table.roundy") %>%
+      .[[5]] %>%
+      html_table(fill = TRUE) %>%
+      as_tibble() %>%
+      slice(5:nrow(.)) %>%
+      select(2:7)
+    
+    colnames(byBreed) <- c("Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
+  } else if (gen > 1) {
+    byBreed <- h %>%
+      html_nodes("table.roundy") %>%
+      .[[5]] %>%
+      html_table(fill = TRUE) %>%
+      as_tibble() %>%
+      slice(5:nrow(.)) %>%
+      select(2:6) %>%
+      mutate(cat = "Depends on Type")
+    
+    colnames(byBreed) <- c("Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
+  } else {
+    byBreed <- tibble(
+      Move = "NA",
+      Type = "NA",
+      `Pwr.` = "NA",
+      `Acc.` = "NA",
+      PP = "NA",
+      `Cat.` = "NA",
+    )
+  }
+  
+  byBreed <- byBreed %>%
+    as_tibble() %>%
+    mutate(
+      Level = "",
+      Method = "Breed"
+    )
+  
+  learnset <- bind_rows(byLevel, byMachine, byBreed)
+  as_tibble(learnset) %>%
+    filter(!str_detect(Type, "(Type|Bold|Move)")) %>%
+    mutate(
+      `Acc.` = case_when(
+        grepl("—", `Acc.`) ~ gsub(".*", "—%", `Acc.`),
+        grepl("\\d*}}", `Acc.`) ~ gsub("\\d*}}", "", `Acc.`),
+        grepl("\\d{3}[^%]", `Acc.`) ~ gsub("^\\d{3}", "", `Acc.`),
+        TRUE ~ `Acc.`
+      ),
+      `Pwr.` = case_when(
+        grepl("—", `Pwr.`) ~ gsub(".*", "—", `Pwr.`),
+        grepl("^0", `Pwr.`) ~ substring(`Pwr.`, 4, 5),
+        grepl("\\d") ~ substring(`Pwr.`, 0, 3),
+        TRUE ~ `Pwr.`
+      )
+    ) %>%
+    select("Move", "Type", "Cat.", "Pwr.", "Acc.", "PP", "Method")
+}
+
+
+View(getLearnset("Bulbasaur", "I"))
+View(getLearnset())
+View(getLearnset("Magikarp", "II"))
+View(getLearnset("Magikarp", "III"))
+
+
+View(getLearnset("Greninja", "VI"))
+View(getLearnset("Gallade", "VII"))
+View(getLearnset("Melmetal", "VII"))
+#View(getLearnset("Regidrago", "VIII"))
+```

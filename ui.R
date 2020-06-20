@@ -28,8 +28,7 @@ ui <- fluidPage(
                  selectInput("mon2","Enter Pokemon","-"),
                  helpText("Gen 8 Not Included"),
                  selectInput("gen2","Select generation", c("All","I","II","III","IV","V","VI"), "All"),
-                 checkboxGroupInput("dex-filter", "Select Pokemon Type(s)", allEmTypes),
-                 actionButton("filter-btn","Apply Filter")
+                 checkboxGroupInput("dex-filter", "Select Pokemon Type(s)", allTypes)
                ),
                mainPanel(
                  actionButton("learn2", "See Learnset"),
@@ -37,7 +36,8 @@ ui <- fluidPage(
                  helpText("Note: Move Categories were specified further in Generation 4 and beyond."),
                  br(),
                  br(),
-                 DT::dataTableOutput("tbl2")
+                 DT::dataTableOutput("tbl2"),
+                 DT::dataTableOutput()
                )
              ),
              tabPanel(

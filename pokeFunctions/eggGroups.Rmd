@@ -1,0 +1,25 @@
+```{r, message = FALSE}
+library(tidyverse)
+library(jsonlite)
+library(rvest)
+```
+
+# Find Pokemon per Egg Group
+- api
+
+# Find Egg Moves per Pokemon
+- web scrape (https://pokemondb.net/pokedex/treecko/egg)
+
+```{r}
+r <- GET(str_glue("https://pokeapi.co/api/v2/egg-group"), query = list(limit = "1000"))
+stop_for_status(r)
+j <- content(r, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+(eg_names <- j$results$name)
+
+
+rgroup <- GET(str_glue("https://pokeapi.co/api/v2/egg-group/{name}/", name = "monster"))
+stop_for_status(rgroup)
+jgroup <- content(rgroup, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+jgroup$pokemon_species
+
+```

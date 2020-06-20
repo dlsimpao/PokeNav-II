@@ -1,0 +1,116 @@
+```{r, message = FALSE}
+library(tidyverse)
+library(jsonlite)
+```
+
+# Find evolutions through API
+# Find evolutions through scraping
+
+# Find Pokemon start (what generation they were introduced)
+
+#Request: Single Pokemon
+```{r}
+No = 1
+r <- GET(str_glue("https://pokeapi.co/api/v2/evolution-chain/{id}/", id = No))
+j <- content(r, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+
+(stage2 <- j$chain$evolves_to$species.name)
+(stage3 <- j$chain$evolves_to$evolves_to[[1]]$species.name)
+
+r2 <- GET(str_glue("https://pokeapi.co/api/v2/evolution-chain"), query = list(limit = 1000))
+j2 <- content(r2, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE) 
+j2$count
+```
+
+#Iterate through basic Pokemon (API) - difficult
+- try chain statement
+```{r}
+evols <- data.frame(Basic = character(),
+                    Stage2 = character(),
+                    Stage3 = character())
+
+getEvols <- function(No){
+  r <- GET(str_glue("https://pokeapi.co/api/v2/evolution-chain/{id}/", id = No))
+  j <- content(r, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+  
+  s2 = j$chain$evolves_to$species.name
+  s3 = j$chain$evolves_to$evolves_to[[1]]$species.name
+  
+  try({
+    print(No)
+    df <- data.frame(NatNo = No, Stage2 = s2, Stage3 = s3)
+    silent = TRUE
+    outFile = "errors"})
+  df
+}
+
+#works but needs to configuration for no evolutions and one other evolution
+evols <- sapply(1:208, function(mon) getEvols(mon))
+
+evols <- bind_rows(evols)
+evols %>% (str_detect(NatNo,"\\d"))
+```
+
+# Scrape evolution chains - easy 
+- as_tibble(.name_repair)
+```{r}
+h <- read_html("https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_evolution_family")
+genFam <- h %>% 
+  html_nodes("table.roundy") %>% 
+  .[[2]] %>% 
+  html_table(fill = TRUE) %>% 
+  as_tibble(.name_repair = "unique")
+
+genFam <- genFam %>% 
+  select(2,5,8) %>% 
+  rename(
+    Basic = names(genFam)[2],
+    Stage2 = names(genFam)[5],
+    Stage3 = names(genFam)[8]
+  ) %>% 
+  filter(!str_detect(Basic,"family"))
+```
+
+```{r}
+
+getGenFams <- function(i){
+  h <- read_html("https://bulbapedia.bulbagarden.net/wiki/List_of_Pok%C3%A9mon_by_evolution_family")
+  genFam <- h %>% 
+  html_nodes("table.roundy") %>% 
+  .[[i]] %>% 
+  html_table(fill = TRUE) %>% 
+  as_tibble(.name_repair = "unique")
+
+genFam <- genFam %>% 
+  select(2,5,8) %>% 
+  rename(
+    Basic = names(genFam)[2],
+    Stage2 = names(genFam)[5],
+    Stage3 = names(genFam)[8]
+  ) %>% 
+  filter(!str_detect(Basic,"family"))
+}
+
+allGenFams <- lapply(1:8, function(x) getGenFams(x)) %>% bind_rows()
+
+save(allGenFams,  file = "allFams.RData")
+```
+
+# Not left_join b/c we also want to observe prior evolutions
+
+- consider those with two evolution paths (Poliwhirl, Nidoran)
+- consider evolutions not introduced in the selected generation
+```{r}
+AM <- (getAreaMons("hoenn-route-102-area"))
+(AM_evs <- allGenFams %>% 
+  filter(Basic %in% AM$Pokemon | Stage2 %in% AM$Pokemon | Stage3 %in% AM$Pokemon))
+
+(test <- allMons %>% filter(Gen > 3) %>% pull(Name))
+"Gallade" %in% test$Name
+
+allGenFams %>% 
+  filter(Basic == "Ralts") %>% 
+  filter(!Stage3 %in% (allMons %>% filter(Gen > 3) %>% pull(Name))) %>% 
+  unlist() %>% 
+  unique() 
+```
