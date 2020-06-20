@@ -19,28 +19,40 @@ name <- norm_shiny_sprites %>%
 
 #Edge cases
 name <- name %>% 
-  gsub("(Mr|Jr)","\\1.",.) %>% 
+  gsub("(Mr)","\\1.",.) %>%
+  gsub("(Jr)","\\1.",.) %>% 
   gsub("(Ho Oh)","Ho-Oh",.) %>% 
-  gsub("(Farfetchd)","Farfetch'd",.)
+  gsub("(Far|Sir)fetchd","\\1fetch'd",.) %>% 
+  gsub("Nidoran F","Nidoran♀",.) %>% 
+  gsub("Nidoran M","Nidoran♂",.) %>% 
+  gsub("Porygon Z","Porygon-Z",.) %>% 
+  gsub("(Kommo|Jangmo|Hakamo).(O)","\\1-o",.) %>% 
+  gsub("(Type) ","\\1: ",.)
 
 NS_sprites <- tibble(Name = name, Class = appearance, Url = norm_shiny_sprites)
 ```
 
 #Fix edge cases
 ```{r}
-test <- left_join(allMons, NS_sprites)
+temp <- allMons %>% filter(Gen < 8, Name != 'MissingNo.')
+
+test <- left_join(temp, NS_sprites, by = "Name")
 test[which(is.na(test$Url)),]$Name
+(Nas <- sum(is.na(test$Url)))
 
 #pattern
-pattern = "Deoxys"
+pattern = "Ind"
 
 allMons$Name %>% str_subset(pattern)
 name %>% str_subset(pattern)
 
-(Nas <- sum(is.na(test$Url)))
+
 ```
 
 #Different Formes
+ - What information do I need for each forme?
 ```{r}
-allMons
+(info1 <- names(allMons))
+#Learnset
+#Level, Move, Type, Cat., Pwr., Acc., PP, Method
 ```
