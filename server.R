@@ -212,6 +212,7 @@ mons <- reactive({
       getLearnset(input$mon2, input$`learnset-filter2`)
     }, error = function(err){
       getLearnset(input$mon2, genIntro())
+      
     }, warning = function(warn){
       print("Try something else")
     })

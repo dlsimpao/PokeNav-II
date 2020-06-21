@@ -36,17 +36,7 @@ romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
 getGenMons_info <- function(genNo){
   h <- read_html(str_glue("https://en.wikipedia.org/wiki/List_of_generation_{num}_Pok%C3%A9mon", num = genNo), encoding = "UTF-8")
   
-  genDigit <- case_when(
-    genNo == "I" ~ 1,
-    genNo == "II" ~ 2,
-    genNo == "III" ~ 3,
-    genNo == "IV" ~ 4,
-    genNo == "V" ~ 5,
-    genNo == "VI" ~ 6,
-    genNo == "VII" ~ 7,
-    genNo == "VIII" ~ 8,
-    TRUE ~ 0
-  )
+  genDigit <- romGen %>% filter(numerals == genNo) %>% pull(arabic)
   
   if(genDigit != 7){
     genMons <- h %>%
@@ -101,16 +91,8 @@ allMons <- lapply(romGen$numerals, function(NUM) getGenMons_info(NUM)) %>% bind_
 # Get Pokemon by Generation
 
 getMon <- function(genNo) {
-  genNo <- case_when(
-    genNo == "I" ~ 1,
-    genNo == "II" ~ 2,
-    genNo == "III" ~ 3,
-    genNo == "IV" ~ 4,
-    genNo == "V" ~ 5,
-    genNo == "VI" ~ 6,
-    genNo == "VII" ~ 7,
-    TRUE ~ 8
-  )
+  
+  genNo <- romGen %>% filter(numerals == genNo) %>% pull(arabic)
 
   r <- GET(str_glue("https://pokeapi.co/api/v2/generation/{id}/", id = genNo))
   stop_for_status(r)
@@ -142,17 +124,7 @@ getLearnset <- function(Mon, gen = "III") {
                           mon = Mon, gen = gen
   ))
   
-  gen <- case_when(
-    gen == "I" ~ 1,
-    gen == "II" ~ 2,
-    gen == "III" ~ 3,
-    gen == "IV" ~ 4,
-    gen == "V" ~ 5,
-    gen == "VI" ~ 6,
-    gen == "VII" ~ 7,
-    gen == "VIII" ~ 8,
-    TRUE ~ 0
-  )
+  gen <- romGen %>% filter(numerals == gen) %>% pull(arabic)
   
   # By Level
   if (gen > 3) {
@@ -309,17 +281,9 @@ getLearnset <- function(Mon, gen = "III") {
 # Get Pokemon by Location
 
 getLocations <- function(genNo) {
-  genNo <- case_when(
-    genNo == "I" ~ 1,
-    genNo == "II" ~ 2,
-    genNo == "III" ~ 3,
-    genNo == "IV" ~ 4,
-    genNo == "V" ~ 5,
-    genNo == "VI" ~ 6,
-    genNo == "VII" ~ 7,
-    genNo == "VIII" ~ 8,
-    TRUE ~ 0
-  )
+  
+  genNo <- romGen %>% filter(numerals == genNo) %>% pull(arabic)
+  
   rregions <- GET(str_glue("https://pokeapi.co/api/v2/region/{id}", id = genNo))
   stop_for_status(rregions)
   jregions <- content(rregions, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)

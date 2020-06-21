@@ -14,7 +14,6 @@ Supplemental tool for Pokemon Emerald
  - Find Pokemon not available in certain generations
 
  - Create section for Breeding Dex ***   
- - Fix romGen translations (easy) ****  
  - Figure out closing connections *
 
 ## Finished:
@@ -22,7 +21,8 @@ Supplemental tool for Pokemon Emerald
  - Generalize the Pokedex to cover available generations in PokeAPI (need gen 7, accomodate MissingNo, MalMetal) [done]  
  - Needs df of Pokemon Name and Generation introduced*** [done]  
  - Fix ItemDex descriptions [done]   
-  - Learnset shown is only for the generation introduced, option for latest learnset? [done]
+ - Learnset shown is only for the generation introduced, option for latest learnset? [done]
+ - Fix romGen translations (easy) ****  
 
 ## Other Ideas  
  - Items for other generation games? (not priority)  
