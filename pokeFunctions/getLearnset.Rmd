@@ -5,12 +5,15 @@ library(rvest)
 ```
 
 # Function for getting learnset for Pokemon in a specific generation
+ - scrape learnsets
+ - scrape learnsets of different formes
 
 # Issues
  - Category based on types prior to generation 3
  - Inconsistent column names
  - Learned
   - tryCatch statement returns stuff
+  
 ```{r function}
 # Mon = "Gallade"
 # gen = "VI"
@@ -204,4 +207,71 @@ View(getLearnset("Greninja", "VI"))
 View(getLearnset("Gallade", "VII"))
 View(getLearnset("Melmetal", "VII"))
 #View(getLearnset("Regidrago", "VIII"))
+```
+
+Consider different formes:
+
+"Deoxys"     "Wormadam"   "Giratina"   "Shaymin"    "Basculin"   "Darmanitan" "Tornadus"   "Thundurus"  "Landorus"  
+"Keldeo"     "Meloetta"   "Flabébé"    "Meowstic"   "Aegislash"  "Pumpkaboo"  "Gourgeist"  "Zygarde"    "Hoopa"     
+"Oricorio"   "Lycanroc"   "Wishiwashi" "Minior"  
+
+Test1 : Webscraping
+```{r}
+#Deoxys find learnset
+h <- read_html("https://pokemondb.net/pokedex/deoxys")
+
+#Type and abilities
+h %>% 
+  html_node("table.vitals-table") %>% 
+  html_nodes("a") %>% 
+  html_text()
+
+#Learnset Normal
+h %>% 
+  html_nodes("table.data-table") %>% 
+  .[[2]] %>% 
+  html_table()
+  
+```
+
+#Test2: API calls [success!]
+```{r}
+name = "deoxys-normal"
+names = c("deoxys-normal","deoxys-speed","deoxys-attack","deoxys-defense")
+
+
+j$moves$move.name %>% .[[move_ind]]
+j$moves$version_group_details %>% .[1:10] %>% .[[move_ind]] %>% select(1,2,4)
+
+
+getLearnset_api <- function(name){
+  r <- GET(str_glue("https://pokeapi.co/api/v2/pokemon/{name}/",name = name))
+  stop_for_status(r)
+  j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
+  n_move <- length(j$moves$move.name)
+  
+  df <- lapply(1:n_move, function(i){
+    move <- j$moves$move.name %>% .[[i]]
+    
+    j$moves$version_group_details %>% 
+    .[[i]] %>% 
+    select(1,2,4) %>% 
+    mutate(Move = move,
+           Name = name)
+  }) %>% bind_rows() %>% 
+    select(5,1,4,2,3)
+  
+}
+
+d_norm <- (getLearnset_api(name))
+d_norm %>% 
+  filter(`version_group.name` == "ruby-sapphire")
+
+deoxys_formes <- lapply(names, function(x) getLearnset_api(x)) %>% bind_rows()
+
+deoxys_formes %>% 
+  filter(Name == "deoxys-speed") %>% 
+  filter(version_group.name == "emerald")
+
+deoxys_formes$Name %>% unique
 ```
