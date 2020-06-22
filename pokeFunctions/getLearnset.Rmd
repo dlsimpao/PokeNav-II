@@ -2,6 +2,8 @@
 library(tidyverse)
 library(httr)
 library(rvest)
+library(jsonlite)
+library(parallel)
 ```
 
 # Function for getting learnset for Pokemon in a specific generation
@@ -215,7 +217,7 @@ Consider different formes:
 "Keldeo"     "Meloetta"   "Flabébé"    "Meowstic"   "Aegislash"  "Pumpkaboo"  "Gourgeist"  "Zygarde"    "Hoopa"     
 "Oricorio"   "Lycanroc"   "Wishiwashi" "Minior"  
 
-Test1 : Webscraping
+Test1 : Webscraping [not successful yet]
 ```{r}
 #Deoxys find learnset
 h <- read_html("https://pokemondb.net/pokedex/deoxys")
@@ -236,10 +238,157 @@ h %>%
 
 #Test2: API calls [success!]
 ```{r}
+romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
+                 numerals = c("I","II","III","IV","V","VI","VII","VIII"),
+                 versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
+
+#api test
+rversion <- GET("https://pokeapi.co/api/v2/version", query = list(limit = 40))
+stop_for_status(rversion)
+jversion <- content(rversion, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+jversion$results
+
+rvgroups <- GET("https://pokeapi.co/api/v2/version-group", query = list(limit = 40)) 
+stop_for_status(rvgroups)
+rvgroups <- content(rvgroups, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+rvgroups$results
+
+
+(rvgroups$results %>% filter(name %in% romGen$versions))
+```
+
+# Input: Pokemon, Output: Learnset
+```{r}
+
 name = "deoxys-normal"
 names = c("deoxys-normal","deoxys-speed","deoxys-attack","deoxys-defense")
 
+r <- GET(str_glue("https://pokeapi.co/api/v2/pokemon/{name}/",name = name))
+stop_for_status(r)
+j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
 
+j$moves$move.name
+j$moves$move.url
+
+```
+
+# Find Move attributes and past_values
+```{r}
+
+r2 <- GET(j$moves$move.url[[5]])
+stop_for_status(r2)
+j2 <- content(r2, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+j2$name
+j2$type
+j2$damage_class$name
+j2$power
+j2$accuracy
+j2$past_values
+
+# Iterate through list of names and get learnset
+# Iterate through learnset of each name and return data frame of all names
+
+getMoveInfo_api_helper <- function(jcontent,i){
+  r2 <- GET(jcontent[[i]])
+  stop_for_status(r2)
+  j2 <- content(r2, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+  
+  #Move, Type, Cat., Pwr. Acc. PP 
+  #Missing Method, Level, but given in the following functions
+  df <- tibble(Move = j2$name, Type = j2$type$name, `Cat.` = j2$damage_class$name,
+               `Pwr.` = j2$power, `Acc.` = j2$accuracy, PP = j2$pp)
+  df <- df %>% 
+    mutate(`Pwr.` = ifelse(is.null(`Pwr.`),"-",as.character(`Pwr.`)),
+           `Acc.` = ifelse(is.null(`Acc.`),"-",as.character(`Acc.`)))
+}
+
+(temp <- lapply(1:3, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()) 
+```
+
+#getPastValues
+
+```{r}
+getPastValues <- function(jcontent,i){
+  r <- GET(jcontent[[i]])
+  stop_for_status(r)
+  j <- content(r, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+  
+  tryCatch({
+    df <- j$past_values %>% 
+      mutate(Name = j$name)
+  },error = function(err){
+    df <- tibble(accuracy = integer(0),
+                 effect_chance = character(0),
+                 effect_entries = list(),
+                 power = integer(),
+                 pp = integer(),
+                 type = character(0),
+                 version_group.name = character(0))
+  })
+}
+
+moves <- j$moves$move.url
+(test <- lapply(1:length(moves), function(move) getPastValues(moves,move)) %>% bind_rows())
+```
+
+#  Complete Function
+
+```{r}
+name <- "deoxys-normal"
+names <- c("deoxys-normal","deoxys-speed","deoxys-attack","deoxys-defense")
+
+
+getMoveInfo_api <- function(name){
+  
+  r <- GET(str_glue("https://pokeapi.co/api/v2/pokemon/{name}/",name = name))
+  stop_for_status(r)
+  j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
+  
+  n <- nrow(j$moves)
+  df <- lapply(1:n, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()
+  df <- df %>% 
+    mutate(Name = name)
+}
+
+getMoveInfo_api_helper <- function(jcontent,i){
+  r2 <- GET(jcontent[[i]])
+  stop_for_status(r2)
+  j2 <- content(r2, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+  
+  #Move, Type, Cat., Pwr. Acc. PP 
+  #Missing Method, Level, but given in the following functions
+  df <- tibble(Move = j2$name, Type = j2$type$name, `Cat.` = j2$damage_class$name,
+               `Pwr.` = j2$power, `Acc.` = j2$accuracy, PP = j2$pp)
+  df <- df %>% 
+    mutate(`Pwr.` = ifelse(is.null(`Pwr.`),"-",as.character(`Pwr.`)),
+           `Acc.` = ifelse(is.null(`Acc.`),"-",as.character(`Acc.`)))
+}
+
+
+
+cl <- makeCluster(4)
+
+clusterExport(cl, c('names', 'getMoveInfo_api','getMoveInfo_api_helper'))
+clusterEvalQ(cl,{
+  library(tidyverse)
+  library(httr)
+  library(rvest)
+  library(jsonlite)
+  library(parallel)
+  NULL
+})
+
+
+
+
+(temp <- parLapplyLB(cl,names, function(name) getMoveInfo_api(name)) %>% bind_rows())
+stopCluster(cl)
+
+```
+
+# find move details by version
+
+```{r}
 j$moves$move.name %>% .[[move_ind]]
 j$moves$version_group_details %>% .[1:10] %>% .[[move_ind]] %>% select(1,2,4)
 
@@ -272,6 +421,37 @@ deoxys_formes <- lapply(names, function(x) getLearnset_api(x)) %>% bind_rows()
 deoxys_formes %>% 
   filter(Name == "deoxys-speed") %>% 
   filter(version_group.name == "emerald")
-
-deoxys_formes$Name %>% unique
 ```
+
+# Combind Move Info, Pokemon move version info, Pokemon past move versions info
+
+```{r}
+# Combine with attack info
+(deoxys_moves <- left_join(temp,deoxys_formes,by = c("Move", "Name")))
+
+deoxys_moves %>% 
+  filter(Name == "deoxys-normal", version_group.name == "ruby-sapphire")
+```
+
+# Find names in API calls
+```{r}
+load('allMons.6.2020.RData')
+allMons
+
+r_api_names <- GET("https://pokeapi.co/api/v2/pokemon", query = list(limit = 897))
+stop_for_status(r_api_names)
+
+j_api_names <- content(r_api_names, as = "text") %>% fromJSON()
+Api_Names <- j_api_names$results$name %>% gsub("-"," ",.) %>% str_to_title()
+df <- tibble(Id = 1:length(Api_Names), Name = Api_Names)
+
+(temp <- left_join(df, allMons))
+
+sum(is.na(allMons))
+sum(is.na(df))
+
+sum(is.na(temp))
+temp[which(is.na(temp$Gen)),]
+
+```
+

@@ -10,7 +10,8 @@ Supplemental tool for Pokemon Emerald
 
  - Figure out section for move tutors (https://bulbapedia.bulbagarden.net/wiki/Move_Tutor#Free_Move_Tutors)  
  
- - Address Pokemon with different forms  (scrape, use keep(html_text(.) == "")) ***  
+ - Address Pokemon with different forms  (api calls) ***  
+ - Test new learnset function to all Pokemon ***
  - Find Pokemon not available in certain generations
 
  - Create section for Breeding Dex ***   
