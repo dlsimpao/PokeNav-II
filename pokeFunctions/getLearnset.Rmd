@@ -270,10 +270,7 @@ j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
 j$moves$move.name
 j$moves$move.url
 
-```
 
-# Find Move attributes and past_values
-```{r}
 
 r2 <- GET(j$moves$move.url[[5]])
 stop_for_status(r2)
@@ -287,7 +284,12 @@ j2$past_values
 
 # Iterate through list of names and get learnset
 # Iterate through learnset of each name and return data frame of all names
+```
 
+# getMoveInfo_api_helper
+Get move info for each move 
+
+```{r}
 getMoveInfo_api_helper <- function(jcontent,i){
   r2 <- GET(jcontent[[i]])
   stop_for_status(r2)
@@ -330,8 +332,35 @@ getPastValues <- function(jcontent,i){
 moves <- j$moves$move.url
 (test <- lapply(1:length(moves), function(move) getPastValues(moves,move)) %>% bind_rows())
 ```
+# Find names in API calls
+```{r}
+load('allMons.6.2020.RData')
+#allMons
 
-#  Complete Function
+r_api_names <- GET("https://pokeapi.co/api/v2/pokemon", query = list(limit = 897))
+stop_for_status(r_api_names)
+
+j_api_names <- content(r_api_names, as = "text") %>% fromJSON()
+Api_Names <- j_api_names$results$name %>% gsub("-"," ",.) %>% str_to_title()
+df <- tibble(Id = 1:length(Api_Names), Name = Api_Names)
+
+temp <- left_join(df, allMons)
+
+sum(is.na(allMons))
+sum(is.na(df))
+
+(temp_names <- temp[which(is.na(temp$Gen)),]$Name %>% str_to_lower() %>% gsub(" ","-",.))
+
+```
+
+
+#  Partial Function
+- get Pokemon Name (~ 122 n)
+- get Learnset by Pokemon (n x m)
+- get Learnset Info by move (n x m x p)
+
+- includes getMoveInfo_api, getMoveInfo_api_helper
+- add later: get Past Values
 
 ```{r}
 name <- "deoxys-normal"
@@ -381,19 +410,15 @@ clusterEvalQ(cl,{
 
 
 
-(temp <- parLapplyLB(cl,names, function(name) getMoveInfo_api(name)) %>% bind_rows())
+(missingMon <- parLapplyLB(cl,temp_names, function(name) getMoveInfo_api(name)) %>% bind_rows())
 stopCluster(cl)
 
 ```
 
-# find move details by version
+# Function2 : find move details by version
 
 ```{r}
-j$moves$move.name %>% .[[move_ind]]
-j$moves$version_group_details %>% .[1:10] %>% .[[move_ind]] %>% select(1,2,4)
-
-
-getLearnset_api <- function(name){
+getMoveMetaInfo_api <- function(name){
   r <- GET(str_glue("https://pokeapi.co/api/v2/pokemon/{name}/",name = name))
   stop_for_status(r)
   j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
@@ -412,46 +437,38 @@ getLearnset_api <- function(name){
   
 }
 
-d_norm <- (getLearnset_api(name))
-d_norm %>% 
-  filter(`version_group.name` == "ruby-sapphire")
+cl <- makeCluster(4)
 
-deoxys_formes <- lapply(names, function(x) getLearnset_api(x)) %>% bind_rows()
+clusterExport(cl, c('temp_names', 'getMoveInfo_api','getMoveInfo_api_helper','getMoveMetaInfo_api'))
+clusterEvalQ(cl,{
+  library(tidyverse)
+  library(httr)
+  library(rvest)
+  library(jsonlite)
+  library(parallel)
+  NULL
+})
 
-deoxys_formes %>% 
-  filter(Name == "deoxys-speed") %>% 
-  filter(version_group.name == "emerald")
+(missingMon2 <- parLapplyLB(cl,temp_names, function(x) getMoveMetaInfo_api(x)) %>% bind_rows())
+stopCluster(cl)
+
 ```
 
 # Combind Move Info, Pokemon move version info, Pokemon past move versions info
 
 ```{r}
-# Combine with attack info
-(deoxys_moves <- left_join(temp,deoxys_formes,by = c("Move", "Name")))
+# Combine Information from functions
+(missingMon_info <- left_join(missingMon, missingMon2, by = c("Move","Name")))
 
-deoxys_moves %>% 
+
+#input pokemon name, version group
+missingMon_info %>% 
   filter(Name == "deoxys-normal", version_group.name == "ruby-sapphire")
+
+missingMon_info$Name %>% 
+  unique() %>% 
+  str_subset("deoxys")
 ```
 
-# Find names in API calls
-```{r}
-load('allMons.6.2020.RData')
-allMons
 
-r_api_names <- GET("https://pokeapi.co/api/v2/pokemon", query = list(limit = 897))
-stop_for_status(r_api_names)
-
-j_api_names <- content(r_api_names, as = "text") %>% fromJSON()
-Api_Names <- j_api_names$results$name %>% gsub("-"," ",.) %>% str_to_title()
-df <- tibble(Id = 1:length(Api_Names), Name = Api_Names)
-
-(temp <- left_join(df, allMons))
-
-sum(is.na(allMons))
-sum(is.na(df))
-
-sum(is.na(temp))
-temp[which(is.na(temp$Gen)),]
-
-```
 
