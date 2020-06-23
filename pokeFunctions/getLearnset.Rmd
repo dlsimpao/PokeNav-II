@@ -307,9 +307,14 @@ getMoveInfo_api_helper <- function(jcontent,i){
 (temp <- lapply(1:3, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()) 
 ```
 
-#getPastValues
+#getPastValues via API
 
 ```{r}
+
+rtemp <- GET(j$moves$move.url[[20]])
+jtemp <- content(rtemp, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+jtemp$past_values
+
 getPastValues <- function(jcontent,i){
   r <- GET(jcontent[[i]])
   stop_for_status(r)
@@ -317,21 +322,34 @@ getPastValues <- function(jcontent,i){
   
   tryCatch({
     df <- j$past_values %>% 
-      mutate(Name = j$name)
+      mutate(Move = j$name) %>% 
+      rename(
+        c('Acc.' = accuracy,
+        'x.effect_chance' = effect_chance,
+        'x.effect_entries' = effect_entries,
+        'x.power' = power,
+        'x.pp' = pp,
+        'x.type' = type,
+        'x.version_group.name' = version_group.name)
+      )
   },error = function(err){
-    df <- tibble(accuracy = integer(0),
-                 effect_chance = character(0),
-                 effect_entries = list(),
-                 power = integer(),
-                 pp = integer(),
-                 type = character(0),
-                 version_group.name = character(0))
+    df <- tibble(Move = character(0),
+                 'Acc.' = integer(0),
+                 x.effect_chance = character(0),
+                 x.effect_entries = list(),
+                 x.power = integer(),
+                 x.pp = integer(),
+                 x.type = character(0),
+                 x.version_group.name = character(0))
   })
 }
 
 moves <- j$moves$move.url
 (test <- lapply(1:length(moves), function(move) getPastValues(moves,move)) %>% bind_rows())
 ```
+
+
+
 # Find names in API calls
 ```{r}
 load('allMons.6.2020.RData')
@@ -368,13 +386,16 @@ names <- c("deoxys-normal","deoxys-speed","deoxys-attack","deoxys-defense")
 
 
 getMoveInfo_api <- function(name){
-  
+  name = 'deoxys-normal'
   r <- GET(str_glue("https://pokeapi.co/api/v2/pokemon/{name}/",name = name))
   stop_for_status(r)
   j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
   
   n <- nrow(j$moves)
   df <- lapply(1:n, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()
+  
+  df2 <- lapply(1:n, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()
+  
   df <- df %>% 
     mutate(Name = name)
 }
@@ -454,12 +475,28 @@ stopCluster(cl)
 
 ```
 
+# Complete Function  
 # Combind Move Info, Pokemon move version info, Pokemon past move versions info
 
 ```{r}
 # Combine Information from functions
 (missingMon_info <- left_join(missingMon, missingMon2, by = c("Move","Name")))
 
+(test2 <- left_join(missingMon_info,test, by = c("Move")))
+
+test %>% 
+  filter(Move == "bind")
+
+
+colnames(test)
+
+colnames(missingMon_info)
+
+missingMon_info %>% 
+  filter(Move == "bind")
+
+test2 %>% 
+  filter(Move == 'bind')
 
 #input pokemon name, version group
 missingMon_info %>% 

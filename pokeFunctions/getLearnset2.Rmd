@@ -1,0 +1,230 @@
+# getPastValues via scraping
+#getPastValues via scrape
+
+```{r}
+hpvals <- read_html("https://bulbapedia.bulbagarden.net/wiki/List_of_modified_moves")
+
+#power
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[3]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[5]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[7]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[9]] %>% 
+  html_table(fill = TRUE)
+
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[11]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[13]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[15]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[17]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[19]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[21]] %>% 
+  html_table(fill = TRUE)
+```
+
+```{r}
+#Accuracy
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[23]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[25]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[27]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[29]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[31]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[33]] %>% 
+  html_table(fill = TRUE)
+```
+```{r}
+#PP
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[35]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[37]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[39]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[41]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[43]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[45]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[47]] %>% 
+  html_table(fill = TRUE)
+
+#Additional Effects
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[49]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[51]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[53]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[55]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[57]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[59]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[61]] %>% 
+  html_table(fill = TRUE)
+```
+
+```{r}
+#Type
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[63]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[65]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[67]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[69]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[71]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[73]] %>% 
+  html_table(fill = TRUE)
+
+#Priority
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[99]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[101]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[103]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[105]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[107]] %>% 
+  html_table(fill = TRUE)
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[109]] %>% 
+  html_table(fill = TRUE)
+```
