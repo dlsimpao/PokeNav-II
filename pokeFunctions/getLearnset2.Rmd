@@ -1,3 +1,10 @@
+```{r, message = FALSE}
+library(tidyverse)
+library(httr)
+library(rvest)
+```
+
+
 # getPastValues via scraping
 #getPastValues via scrape
 
@@ -51,14 +58,16 @@ hpvals %>%
   .[[19]] %>% 
   html_table(fill = TRUE)
 
-hpvals %>% 
-  html_nodes("table") %>% 
-  .[[21]] %>% 
-  html_table(fill = TRUE)
 ```
 
 ```{r}
 #Accuracy
+
+hpvals %>% 
+  html_nodes("table") %>% 
+  .[[21]] %>% 
+  html_table(fill = TRUE)
+
 hpvals %>% 
   html_nodes("table") %>% 
   .[[23]] %>% 

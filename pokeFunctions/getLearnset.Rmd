@@ -16,6 +16,10 @@ library(parallel)
  - Learned
   - tryCatch statement returns stuff
   
+# New Attempt
+ -  scrape from (https://bulbapedia.bulbagarden.net/wiki/Category:Pok%C3%A9mon_learnsets)  
+ - customize getLearnset for each generation b/c different features added like tutors, TMs, TRs
+  
 ```{r function}
 # Mon = "Gallade"
 # gen = "VI"
@@ -310,10 +314,9 @@ getMoveInfo_api_helper <- function(jcontent,i){
 #getPastValues via API
 
 ```{r}
-
-rtemp <- GET(j$moves$move.url[[20]])
-jtemp <- content(rtemp, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
-jtemp$past_values
+# rtemp <- GET(j$moves$move.url[[20]])
+# jtemp <- content(rtemp, type = "text", encoding = "UTF-8") %>% fromJSON(flatten = TRUE)
+# jtemp$past_values
 
 getPastValues <- function(jcontent,i){
   r <- GET(jcontent[[i]])
@@ -343,7 +346,10 @@ getPastValues <- function(jcontent,i){
                  x.version_group.name = character(0))
   })
 }
-
+name = "deoxys-normal"
+r <- GET(str_glue("https://pokeapi.co/api/v2/pokemon/{name}/",name = name))
+stop_for_status(r)
+j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
 moves <- j$moves$move.url
 (test <- lapply(1:length(moves), function(move) getPastValues(moves,move)) %>% bind_rows())
 ```
@@ -381,12 +387,10 @@ sum(is.na(df))
 - add later: get Past Values
 
 ```{r}
-name <- "deoxys-normal"
 names <- c("deoxys-normal","deoxys-speed","deoxys-attack","deoxys-defense")
 
 
 getMoveInfo_api <- function(name){
-  name = 'deoxys-normal'
   r <- GET(str_glue("https://pokeapi.co/api/v2/pokemon/{name}/",name = name))
   stop_for_status(r)
   j <- content(r, type = "text", encoding = 'UTF-8') %>% fromJSON(flatten = TRUE)
@@ -394,7 +398,7 @@ getMoveInfo_api <- function(name){
   n <- nrow(j$moves)
   df <- lapply(1:n, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()
   
-  df2 <- lapply(1:n, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()
+  #df2 <- lapply(1:n, function(i) getMoveInfo_api_helper(j$moves$move.url,i)) %>% bind_rows()
   
   df <- df %>% 
     mutate(Name = name)
