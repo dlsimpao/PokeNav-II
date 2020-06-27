@@ -113,168 +113,84 @@ disp_Mon_scrape <- getGenMons_info("III")
 ##############
 
 # Scrape Pokemon Learnsets from Bulba
-
-getLearnset <- function(Mon, gen = "III") {
-  if (Mon %in% c("Melmetal", "Meltan")) {
-    link <- "https://bulbapedia.bulbagarden.net/wiki/{mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset#By_TM.2FHM"
-  } else {
-    link <- "https://bulbapedia.bulbagarden.net/wiki/{mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset#By_leveling_up"
-  }
-  h <- read_html(str_glue(link,
-                          mon = Mon, gen = gen
-  ))
+getLearnset_txt <- function(mon, gen) {
+  h <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title={Mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset&action=edit", Mon = mon, gen = gen))
   
-  gen <- romGen %>% filter(numerals == gen) %>% pull(arabic)
+  gen_arabic <- romGen %>% filter(numerals == gen) %>% pull(arabic)
   
-  # By Level
-  if (gen > 3) {
-    byLevel <- h %>%
-      html_node("table.sortable") %>%
-      html_table() %>%
-      as.data.frame() %>%
-      select(1, Move, Type, `Cat.`, `Pwr.`, `Acc.`, PP)
-    
-    colnames(byLevel) <- c("Level", "Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
-  } else {
-    byLevel <- h %>%
-      html_node("table.sortable") %>%
-      html_table() %>%
-      as.data.frame()
-    
-    byLevel <- tryCatch({
-      byLevel <- byLevel %>%
-        select(1, Move, Type, Power, Accuracy, PP) %>%
-        mutate(`Cat.` = "Depends on Type")
-    },error = function(err){
-      byLevel <- byLevel %>%
-        select(1, Move, Type, `Pwr.`, `Acc.`, PP) %>%
-        mutate(`Cat.` = "Depends on Type")
-    },warning = function(cond){
-      message("Try something else")
-    })
-    
-    colnames(byLevel) <- c("Level", "Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
-    # if (gen < 3) {
-    #   byLevel <- byLevel %>%
-    #     select(1, Move, Type, Power, Accuracy, PP) %>%
-    #     mutate(`Cat.` = "Depends on Type")
-    # } else {
-    #   byLevel <- byLevel %>%
-    #     select(1, Move, Type, `Pwr.`, `Acc.`, PP) %>%
-    #     mutate(`Cat.` = "Depends on Type")
-    #}
-    colnames(byLevel) <- c("Level", "Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
+  if(gen_arabic > 3){
+    gen_colnames <- c("Level","Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
+    tutor_colnames <- c("Move","Type","Cat.","Pwr.","Acc.","PP")
+  }else{
+    gen_colnames <- c("Level","Move", "Type", "Pwr.", "Acc.", "PP")
+    tutor_colnames <- c("Move","Type","Pwr.","Acc.","PP")
   }
   
-  # Fix up values
-  byLevel <- byLevel %>%
-    mutate(
-      Level = substring(Level, 0, nchar(as.character(Level)) / 2),
-      `Pwr.` = as.character(`Pwr.`),
-      PP = as.character(PP),
-      Method = "Level"
-    ) %>%
-    as_tibble()
+  learnset <- h %>%
+    html_nodes("textarea") %>%
+    html_text() %>%
+    strsplit("\\n") %>%
+    .[[1]]
   
-  
-  # By Machine
-  if (gen > 3) {
-    byMachine <- h %>%
-      html_nodes("table.roundy") %>%
-      .[[3]] %>%
-      html_table(fill = TRUE) %>%
-      as_tibble() %>%
-      slice(5:nrow(.)) %>%
-      select(3:8)
-    colnames(byMachine) <- c("Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
-  } else {
-    byMachine <- h %>%
-      html_nodes("table.roundy") %>%
-      .[[3]] %>%
-      html_table(fill = TRUE) %>%
-      as_tibble() %>%
-      slice(5:nrow(.)) %>%
-      select(3:7) %>%
-      mutate(cat = "Depends on Type")
-    colnames(byMachine) <- c("Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
-  }
-  
-  
-  
-  byMachine <- byMachine %>%
+  # Level
+  byLevel <- learnset %>%
+    str_subset("level") %>%
+    str_extract("(?<=\\{\\{learnlist/level\\d\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>%
     as_tibble() %>%
-    mutate(
-      Level = "",
-      Method = "Machine"
-    )
+    separate(value, gen_colnames, sep = "\\|", extra = "drop") %>%
+    mutate(Method = "Level")
   
-  if (Mon %in% c("Meltan", "Melmetal")){
-    byBreed <- tibble(
-      Move = "NA",
-      Type = "NA",
-      `Pwr.` = "NA",
-      `Acc.` = "NA",
-      PP = "NA",
-      `Cat.` = "NA",
-    )
-  } else if (gen > 3) {
-    byBreed <- h %>%
-      html_nodes("table.roundy") %>%
-      .[[5]] %>%
-      html_table(fill = TRUE) %>%
-      as_tibble() %>%
-      slice(5:nrow(.)) %>%
-      select(2:7)
-    
-    colnames(byBreed) <- c("Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
-  } else if (gen > 1) {
-    byBreed <- h %>%
-      html_nodes("table.roundy") %>%
-      .[[5]] %>%
-      html_table(fill = TRUE) %>%
-      as_tibble() %>%
-      slice(5:nrow(.)) %>%
-      select(2:6) %>%
-      mutate(cat = "Depends on Type")
-    
-    colnames(byBreed) <- c("Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
-  } else {
-    byBreed <- tibble(
-      Move = "NA",
-      Type = "NA",
-      `Pwr.` = "NA",
-      `Acc.` = "NA",
-      PP = "NA",
-      `Cat.` = "NA",
-    )
-  }
-  
-  byBreed <- byBreed %>%
+  byMachine <- learnset %>%
+    str_subset("tm") %>%
+    str_extract("(?<=\\{\\{learnlist/tm\\d\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>%
     as_tibble() %>%
-    mutate(
-      Level = "",
-      Method = "Breed"
-    )
+    separate(value, gen_colnames, sep = "\\|", extra = "drop") %>%
+    mutate(Level = "", Method = "Machine")
   
-  learnset <- bind_rows(byLevel, byMachine, byBreed)
-  as_tibble(learnset) %>%
-    filter(!str_detect(Type, "(Type|Bold|Move)")) %>%
+  byBreed <- learnset %>%
+    str_subset("breed") %>%
+    str_extract("(?<=\\{\\{learnlist/breed\\d\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>% 
+    gsub("\\{\\{.*\\}\\}","",.)%>%
+    as_tibble() %>%
+    separate(value, gen_colnames, sep = "\\|", extra = "drop") %>%
+    mutate(Level = "", Method = "Breed")
+  
+  byTutor <- learnset %>%
+    str_subset("tutor") %>%
+    str_extract("(?<=\\{\\{learnlist/tutor\\d\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>%
+    as_tibble() %>%
+    separate(value, tutor_colnames, sep = "\\|", extra = "drop") %>%
+    mutate(Level = "", Method = "Tutor")
+  
+  byEvent <- learnset %>%
+    str_subset("event") %>%
+    str_extract("(?<=\\{\\{learnlist/event\\d\\|).*(?=\\}\\})") %>%
+    gsub("\\{\\{.*\\}\\}","",.) %>% 
+    gsub("\\[.*\\]","",.) %>% 
+    str_subset("NA", negate = TRUE) %>%
+    as_tibble() %>%
+    separate(value, gen_colnames, sep = "\\|", extra = "drop") %>%
+    mutate(Level = "", Method = "Tutor", 
+           temp = NULL, temp2 = NULL, 'Event Mon' = NULL)
+  
+  df <- bind_rows(byLevel, byMachine, byBreed, byTutor, byEvent) %>% 
     mutate(
-      `Acc.` = case_when(
-        grepl("—", `Acc.`) ~ gsub(".*", "—%", `Acc.`),
-        grepl("\\d*}}", `Acc.`) ~ gsub("\\d*}}", "", `Acc.`),
-        grepl("\\d{3}[^%]", `Acc.`) ~ gsub("^\\d{3}", "", `Acc.`),
-        TRUE ~ `Acc.`
+      Pwr. = case_when(
+        Pwr. == "&mdash;" ~ "-",
+        TRUE ~ Pwr.
       ),
-      `Pwr.` = case_when(
-        grepl("—", `Pwr.`) ~ gsub(".*", "—", `Pwr.`),
-        grepl("^0", `Pwr.`) ~ substring(`Pwr.`, 4, 5),
-        grepl("\\d",`Pwr.`) ~ substring(`Pwr.`, 0, 3),
-        TRUE ~ `Pwr.`
+      Acc. = case_when(
+        Acc. == "&mdash;" ~ "-",
+        TRUE ~ Acc.
       )
-    ) %>%
-    select("Level", "Move", "Type", "Cat.", "Pwr.", "Acc.", "PP", "Method")
+    ) %>% 
+    filter(Type %in% allTypes)
 }
+
 
 
 

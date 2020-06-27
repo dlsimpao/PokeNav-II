@@ -6,6 +6,8 @@ Supplemental tool for Pokemon Emerald
  - Conceptualize what aspects should a Pokedex entry contain  
  - Abilities, Stats, EVs, Catch Rate, Locations, Sprites? found***        
  
+ - Integrate different versions within a generation ***         
+ 
  - Expand locations to Gen 7, need to scrape from PokemonDB  ** [partially done, only locations, not areas]  
 
  - Figure out section for move tutors (https://bulbapedia.bulbagarden.net/wiki/Move_Tutor#Free_Move_Tutors)  

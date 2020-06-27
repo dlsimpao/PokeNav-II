@@ -140,9 +140,9 @@ mons <- reactive({
   learnset <- eventReactive(input$learn,{
     req(input$mon != "-")
     if(input$mon1.2 == "-"){
-      getLearnset(input$mon, gen = input$gen)
+      getLearnset_txt(input$mon, gen = input$gen)
     }else{
-      getLearnset(input$mon1.2, gen = input$gen)
+      getLearnset_txt(input$mon1.2, gen = input$gen)
     }
   })
   
@@ -209,9 +209,9 @@ mons <- reactive({
     
     
     tryCatch({
-      getLearnset(input$mon2, input$`learnset-filter2`)
+      getLearnset_txt(input$mon2, input$`learnset-filter2`)
     }, error = function(err){
-      getLearnset(input$mon2, genIntro())
+      getLearnset_txt(input$mon2, genIntro())
       
     }, warning = function(warn){
       print("Try something else")

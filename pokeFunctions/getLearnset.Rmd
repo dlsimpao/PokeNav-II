@@ -17,7 +17,7 @@ library(parallel)
   - tryCatch statement returns stuff
   
 # New Attempt
- -  scrape from (https://bulbapedia.bulbagarden.net/wiki/Category:Pok%C3%A9mon_learnsets)  
+ -  scrape from (f)  
  - customize getLearnset for each generation b/c different features added like tutors, TMs, TRs
   
 ```{r function}
@@ -40,17 +40,7 @@ getLearnset <- function(Mon, gen = "III") {
                           mon = Mon, gen = gen
   ))
   
-  gen <- case_when(
-    gen == "I" ~ 1,
-    gen == "II" ~ 2,
-    gen == "III" ~ 3,
-    gen == "IV" ~ 4,
-    gen == "V" ~ 5,
-    gen == "VI" ~ 6,
-    gen == "VII" ~ 7,
-    gen == "VIII" ~ 8,
-    TRUE ~ 0
-  )
+  gen <- romGen %>% filter(numerals == gen) %>% pull(arabic)
   
   # By Level
   if (gen > 3) {
@@ -72,23 +62,12 @@ getLearnset <- function(Mon, gen = "III") {
         select(1, Move, Type, Power, Accuracy, PP) %>%
         mutate(`Cat.` = "Depends on Type")
     },error = function(err){
-        byLevel <- byLevel %>%
-          select(1, Move, Type, `Pwr.`, `Acc.`, PP) %>%
-          mutate(`Cat.` = "Depends on Type")
+      byLevel <- byLevel %>%
+        select(1, Move, Type, `Pwr.`, `Acc.`, PP) %>%
+        mutate(`Cat.` = "Depends on Type")
     },warning = function(cond){
       message("Try something else")
     })
-    
-    colnames(byLevel) <- c("Level", "Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
-    # if (gen < 3) {
-    #   byLevel <- byLevel %>%
-    #     select(1, Move, Type, Power, Accuracy, PP) %>%
-    #     mutate(`Cat.` = "Depends on Type")
-    # } else {
-    #   byLevel <- byLevel %>%
-    #     select(1, Move, Type, `Pwr.`, `Acc.`, PP) %>%
-    #     mutate(`Cat.` = "Depends on Type")
-    #}
     colnames(byLevel) <- c("Level", "Move", "Type", "Pwr.", "Acc.", "PP", "Cat.")
   }
   
@@ -195,11 +174,11 @@ getLearnset <- function(Mon, gen = "III") {
       `Pwr.` = case_when(
         grepl("—", `Pwr.`) ~ gsub(".*", "—", `Pwr.`),
         grepl("^0", `Pwr.`) ~ substring(`Pwr.`, 4, 5),
-        grepl("\\d") ~ substring(`Pwr.`, 0, 3),
+        grepl("\\d",`Pwr.`) ~ substring(`Pwr.`, 0, 3),
         TRUE ~ `Pwr.`
       )
     ) %>%
-    select("Move", "Type", "Cat.", "Pwr.", "Acc.", "PP", "Method")
+    select("Level", "Move", "Type", "Cat.", "Pwr.", "Acc.", "PP", "Method")
 }
 
 
