@@ -2,17 +2,17 @@ server <- function(input, output, session) {
   
   ### Location by Generation ###
   intGen <- reactive({
-    romGen %>% filter(numerals == input$gen) %>% pull(arabic)
+    romGen %>% filter(arabic == input$gen) %>% pull(arabic)
   })
   
   # translates into generation version
   verGen <- reactive({
-    romGen %>% filter(numerals == input$genP3) %>% pull(versions)
+    romGen %>% filter(arabic == input$genP3) %>% pull(versions)
   })
   
   
   location <- reactive({
-    req(input$gen %in% romGen$numerals)
+    req(input$gen %in% romGen$arabic)
 
     # if filter is used
     if (!is.null(input$`loc-filter`)) {
@@ -178,7 +178,8 @@ mons <- reactive({
   })
   
   p2Mons <- reactive({
-    df <- allMons %>% filter(Gen <= 7, Name != "MissingNo.") #no learnset available for gen 8, limit to gen 6 for consistency
+    #no learnset available for gen 8, limit to gen 6 for consistency
+    df <- allMons %>% filter(Gen <= 7, Name != "MissingNo.")
     
     if(input$gen2 != "All"){
       df <- df %>% filter(GenX == input$gen2)
@@ -200,9 +201,9 @@ mons <- reactive({
     allMons %>% filter(Name == input$mon2) %>% pull(GenX)
   })
   
-  genIntroNumber <- reactive(romGen %>% filter(numerals == genIntro()) %>% pull(arabic))
+  genIntroNumber <- reactive(romGen %>% filter(arabic == genIntro()) %>% pull(arabic))
   
-  genLearnset2 <- reactive(romGen %>% filter(arabic >= genIntroNumber()) %>% pull(numerals))
+  genLearnset2 <- reactive(romGen %>% filter(arabic >= genIntroNumber()) %>% pull(arabic))
   
   learnsetP2 <- eventReactive(input$learn2,{
     req(input$mon2 != "-")

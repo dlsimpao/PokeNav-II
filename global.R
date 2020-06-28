@@ -27,23 +27,84 @@ allEmTypes <- c(specTypes,physTypes)
 allTypes <- c(allEmTypes,"Fairy")
 
 romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
-                 numerals = c("I","II","III","IV","V","VI","VII","VIII"),
+                 roman = c("I","II","III","IV","V","VI","VII","VIII"),
                  versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
-##########################    Work from hoennDex   ############################
+##########################    Work from pokeLocation   ############################
 
-# Scrape info from gen III
+# Scrape info from all gens
 
 getGenMons_info <- function(genNo){
   h <- read_html(str_glue("https://en.wikipedia.org/wiki/List_of_generation_{num}_Pok%C3%A9mon", num = genNo), encoding = "UTF-8")
   
-  genDigit <- romGen %>% filter(numerals == genNo) %>% pull(arabic)
+  gen_arabic <- romGen %>% filter(roman == genNo) %>% pull(arabic)
   
-  if(genDigit != 7){
+  if(gen_arabic < 6){
     genMons <- h %>%
       html_nodes("table") %>%
       .[[2]] %>%
       html_table(fill = TRUE) %>%
       as.data.frame() 
+  }else if (gen_arabic == 6){
+    temp <- h %>% 
+      html_nodes("table") %>% 
+      .[[2]] %>% 
+      html_table(fill = TRUE) %>% 
+      as.data.frame()
+    
+    megaMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[3]] %>% 
+      html_table(fill = TRUE) %>% 
+      as.data.frame()
+    
+    colnames(megaMons) <- names(temp)
+    
+    genMons <- bind_rows(temp,megaMons)
+    
+  }else if(gen_arabic == 7){
+    temp <- h %>% 
+      html_nodes("table") %>% 
+      .[[3]] %>% 
+      html_table(fill = TRUE) %>% 
+      as.data.frame()
+    
+    alolaMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[4]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique") %>% 
+      mutate(`English name` = paste0(.[[1]]," Alola")) 
+    
+    colnames(alolaMons) <- names(temp)
+    
+    genMons <- bind_rows(temp,alolaMons)
+    
+  }else if(gen_arabic == 8){
+    temp <- h %>% 
+      html_nodes("table") %>% 
+      .[[2]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique")
+    
+    galarMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[3]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique") %>% 
+      mutate(`English name` = paste0(.[[1]]," Galar"))
+    
+    gigantaMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[4]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique") %>% 
+      mutate(`English name` = paste0(.[[1]]," Gigantamax"))
+    
+    colnames(galarMons) <- names(temp)
+    colnames(gigantaMons) <- names(temp)
+    
+    genMons <- bind_rows(temp, galarMons, gigantaMons)
+    
   }else{
     genMons <- h %>% 
       html_nodes("table") %>% 
@@ -51,6 +112,7 @@ getGenMons_info <- function(genNo){
       html_table(fill = TRUE) %>% 
       as.data.frame()
   }
+  
   
   colnames(genMons) <- c("Name","Name2","NatNo","Type1","Type2","Evolves","Notes")
   
@@ -75,15 +137,17 @@ getGenMons_info <- function(genNo){
           # grepl("(Mega|End|Obs|No|Primal)", Evolves) ~ gsub(".*","", Evolves),
           TRUE ~ Evolves
         ),
-        Gen = genDigit,
+        Gen = gen_arabic,
         GenX = genNo
       ) %>%
-      distinct(Name, .keep_all = TRUE)) 
+      distinct(Name, .keep_all = TRUE)) %>% 
+    filter(!str_detect(Type1,"(Type(s)|Primary)"))
 }
+
 
 #Helps find which evolutions exist in which generation
 
-allMons <- lapply(romGen$numerals, function(NUM) getGenMons_info(NUM)) %>% bind_rows
+allMons <- lapply(romGen$roman, function(NUM) suppressMessages(getGenMons_info(NUM))) %>% bind_rows
 # NatNo Name Type1 Type2 Evolves Gen GenX
 #save(allMons, file = "allMons.6.2020.RData")
 
@@ -92,7 +156,7 @@ allMons <- lapply(romGen$numerals, function(NUM) getGenMons_info(NUM)) %>% bind_
 
 getMon <- function(genNo) {
   
-  genNo <- romGen %>% filter(numerals == genNo) %>% pull(arabic)
+  genNo <- romGen %>% filter(roman == genNo) %>% pull(arabic)
 
   r <- GET(str_glue("https://pokeapi.co/api/v2/generation/{id}/", id = genNo))
   stop_for_status(r)
@@ -116,7 +180,7 @@ disp_Mon_scrape <- getGenMons_info("III")
 getLearnset_txt <- function(mon, gen) {
   h <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title={Mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset&action=edit", Mon = mon, gen = gen))
   
-  gen_arabic <- romGen %>% filter(numerals == gen) %>% pull(arabic)
+  gen_arabic <- romGen %>% filter(roman == gen) %>% pull(arabic)
   
   if(gen_arabic > 3){
     gen_colnames <- c("Level","Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
@@ -198,7 +262,7 @@ getLearnset_txt <- function(mon, gen) {
 
 getLocations <- function(genNo) {
   
-  genNo <- romGen %>% filter(numerals == genNo) %>% pull(arabic)
+  genNo <- romGen %>% filter(roman == genNo) %>% pull(arabic)
   
   rregions <- GET(str_glue("https://pokeapi.co/api/v2/region/{id}", id = genNo))
   stop_for_status(rregions)

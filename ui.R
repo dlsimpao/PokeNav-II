@@ -53,7 +53,7 @@ ui <- fluidPage(
                           ),
                           tabPanel(
                             "TM Information",
-                            selectInput("genP3","Select generation", romGen$numerals, "III"),
+                            selectInput("genP3","Select generation", romGen$arabic, "III"),
                             helpText("TM information available for all generations"),
                             DT::dataTableOutput("tbl3.2")
                           )

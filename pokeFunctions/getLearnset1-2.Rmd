@@ -15,7 +15,7 @@ mon <- "MelMetal"
 gen <- "VII"
 
 romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
-                 numerals = c("I","II","III","IV","V","VI","VII","VIII"),
+                 roman = c("I","II","III","IV","V","VI","VII","VIII"),
                  versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
 
 getLearnset_txt <- function(mon, gen) {
@@ -197,4 +197,12 @@ physTypes <- tibble(Types = c("Bug", "Fighting", "Flying", "Ghost", "Ground", "N
   mutate(Cat. = "Physical/Status")
 
 (gen1_3_Types <- bind_rows(specTypes,physTypes))
+```
+# special cases for Pokemon with multiple formes
+
+"Deoxys"     "Wormadam"   "Giratina"   "Shaymin"    "Basculin"   "Darmanitan" "Tornadus"   "Thundurus"  "Landorus"  
+"Keldeo"     "Meloetta"   "Flabébé"    "Meowstic"   "Aegislash"  "Pumpkaboo"  "Gourgeist"  "Zygarde"    "Hoopa"     
+"Oricorio"   "Lycanroc"   "Wishiwashi" "Minior"  
+```{r}
+
 ```

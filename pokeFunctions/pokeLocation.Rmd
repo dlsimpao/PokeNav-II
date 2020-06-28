@@ -34,28 +34,85 @@ load("api.6.2020.RData")
 # 1. Gen Dex
 ```{r}
 #eMons - list of every Pokemon in emerald with types and evolutions, potentially with japanese names and field notes
+romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
+                 roman = c("I","II","III","IV","V","VI","VII","VIII"),
+                 versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
+
+genNo = "VIII"
 
 getGenMons_info <- function(genNo){
   h <- read_html(str_glue("https://en.wikipedia.org/wiki/List_of_generation_{num}_Pok%C3%A9mon", num = genNo), encoding = "UTF-8")
   
-  genDigit <- case_when(
-    genNo == "I" ~ 1,
-    genNo == "II" ~ 2,
-    genNo == "III" ~ 3,
-    genNo == "IV" ~ 4,
-    genNo == "V" ~ 5,
-    genNo == "VI" ~ 6,
-    genNo == "VII" ~ 7,
-    genNo == "VIII" ~ 8,
-    TRUE ~ 0
-  )
+  gen_arabic <- romGen %>% filter(roman == genNo) %>% pull(arabic)
   
-  if(genDigit != 7){
+  
+  if(gen_arabic < 6){
     genMons <- h %>%
       html_nodes("table") %>%
       .[[2]] %>%
       html_table(fill = TRUE) %>%
       as.data.frame() 
+  }else if (gen_arabic == 6){
+    temp <- h %>% 
+      html_nodes("table") %>% 
+      .[[2]] %>% 
+      html_table(fill = TRUE) %>% 
+      as.data.frame()
+    
+    megaMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[3]] %>% 
+      html_table(fill = TRUE) %>% 
+      as.data.frame()
+    
+    colnames(megaMons) <- names(temp)
+    
+    genMons <- bind_rows(temp,megaMons)
+    
+  }else if(gen_arabic == 7){
+    temp <- h %>% 
+      html_nodes("table") %>% 
+      .[[3]] %>% 
+      html_table(fill = TRUE) %>% 
+      as.data.frame()
+    
+    alolaMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[4]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique") %>% 
+      mutate(`English name` = paste0(.[[1]]," Alola")) 
+    
+    colnames(alolaMons) <- names(temp)
+    
+    genMons <- bind_rows(temp,alolaMons)
+  
+  }else if(gen_arabic == 8){
+    temp <- h %>% 
+      html_nodes("table") %>% 
+      .[[2]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique")
+    
+    galarMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[3]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique") %>% 
+      mutate(`English name` = paste0(.[[1]]," Galar"))
+    
+    gigantaMons <- h %>% 
+      html_nodes("table") %>% 
+      .[[4]] %>% 
+      html_table(fill = TRUE) %>% 
+      as_tibble(.name_repair = "unique") %>% 
+      mutate(`English name` = paste0(.[[1]]," Gigantamax"))
+    
+    colnames(galarMons) <- names(temp)
+    colnames(gigantaMons) <- names(temp)
+    
+    genMons <- bind_rows(temp, galarMons, gigantaMons)
+    
   }else{
     genMons <- h %>% 
       html_nodes("table") %>% 
@@ -63,6 +120,7 @@ getGenMons_info <- function(genNo){
       html_table(fill = TRUE) %>% 
       as.data.frame()
   }
+  
   
   colnames(genMons) <- c("Name","Name2","NatNo","Type1","Type2","Evolves","Notes")
   
@@ -87,13 +145,16 @@ getGenMons_info <- function(genNo){
           # grepl("(Mega|End|Obs|No|Primal)", Evolves) ~ gsub(".*","", Evolves),
           TRUE ~ Evolves
         ),
-        Gen = genDigit,
+        Gen = gen_arabic,
         GenX = genNo
       ) %>%
-      distinct(Name, .keep_all = TRUE)) 
+      distinct(Name, .keep_all = TRUE)) %>% 
+    filter(!str_detect(Type1,"(Type(s)|Primary)"))
 }
 
-(getGenMons_info("III"))
+
+suppressMessages(getGenMons_info("VIII"))
+
 ```
 
 ```{r}
