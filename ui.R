@@ -28,7 +28,7 @@ ui <- fluidPage(
                  selectInput("mon2","Enter Pokemon","-"),
                  helpText("Gen 8 Not Included"),
                  selectInput("gen2","Select generation", c("All","I","II","III","IV","V","VI"), "All"),
-                 selectInput("learnset-filter2","Filter Learnset by Gen", c("-","I","II","III","IV","V","VI"), "All"),
+                 selectInput("learnset-filter2","Filter Learnset by Gen", c("-","I","II","III","IV","V","VI","VII"), "All"),
                  helpText("Defaults to the learnset in the generation the Pokemon is introduced. Gen VIII shown but unavailable."),
                  checkboxGroupInput("dex-filter", "Select Pokemon Type(s)", allTypes)
                ),

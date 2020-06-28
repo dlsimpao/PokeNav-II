@@ -2,17 +2,17 @@ server <- function(input, output, session) {
   
   ### Location by Generation ###
   intGen <- reactive({
-    romGen %>% filter(arabic == input$gen) %>% pull(arabic)
+    romGen %>% filter(roman == input$gen) %>% pull(arabic)
   })
   
   # translates into generation version
   verGen <- reactive({
-    romGen %>% filter(arabic == input$genP3) %>% pull(versions)
+    romGen %>% filter(roman == input$genP3) %>% pull(versions)
   })
   
   
   location <- reactive({
-    req(input$gen %in% romGen$arabic)
+    req(input$gen %in% romGen$roman)
 
     # if filter is used
     if (!is.null(input$`loc-filter`)) {
@@ -201,21 +201,23 @@ mons <- reactive({
     allMons %>% filter(Name == input$mon2) %>% pull(GenX)
   })
   
-  genIntroNumber <- reactive(romGen %>% filter(arabic == genIntro()) %>% pull(arabic))
+  genIntroNumber <- reactive(romGen %>% filter(roman == genIntro()) %>% pull(arabic))
   
-  genLearnset2 <- reactive(romGen %>% filter(arabic >= genIntroNumber()) %>% pull(arabic))
+  genLearnset2 <- reactive(romGen %>% filter(arabic >= genIntroNumber()) %>% pull(roman))
   
   learnsetP2 <- eventReactive(input$learn2,{
     req(input$mon2 != "-")
-    
-    
-    tryCatch({
-      getLearnset_txt(input$mon2, input$`learnset-filter2`)
+    df <- tryCatch({
+      
+      suppressWarnings(getLearnset_txt(input$mon2, input$`learnset-filter2`))
+      
     }, error = function(err){
-      getLearnset_txt(input$mon2, genIntro())
+      
+      suppressWarnings(getLearnset_txt(input$mon2, genIntro()))
       
     }, warning = function(warn){
-      print("Try something else")
+      
+      print("Error in learnsetP2")
     })
     
   })

@@ -11,8 +11,11 @@ library(XML)
 # Text Approach
 # Note: Good until gen 3 (w/o Category)
 ```{r}
-mon <- "MelMetal"
-gen <- "VII"
+mon <- "Deoxys"
+gen <- "III"
+
+mon <- "Volcarona"
+gen <- "V"
 
 romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
                  roman = c("I","II","III","IV","V","VI","VII","VIII"),
@@ -21,7 +24,7 @@ romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
 getLearnset_txt <- function(mon, gen) {
   h <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title={Mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset&action=edit", Mon = mon, gen = gen))
   
-  gen_arabic <- romGen %>% filter(numerals == gen) %>% pull(arabic)
+  gen_arabic <- romGen %>% filter(roman == gen) %>% pull(arabic)
   
   if(gen_arabic > 3){
     gen_colnames <- c("Level","Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
@@ -61,7 +64,7 @@ getLearnset_txt <- function(mon, gen) {
     gsub("\\{\\{.*\\}\\}","",.)%>%
     as_tibble() %>%
     separate(value, gen_colnames, sep = "\\|", extra = "drop") %>%
-    mutate(Level = "", Method = "Breed")
+    mutate(Level = "", Method = "Breed") 
 
   byTutor <- learnset %>%
       str_subset("tutor") %>%
@@ -96,8 +99,9 @@ getLearnset_txt <- function(mon, gen) {
     filter(Type %in% allTypes)
 }
 
+(getLearnset_txt("Nidoran♂","III"))
 (getLearnset_txt("Ralts","III"))
-(getLearnset_txt("Melmetal","VII"))
+(suppressWarnings(getLearnset_txt("Volcarona","V")))
 ```
 
 getLearnset_text
@@ -140,8 +144,25 @@ str_extract( "\\d+(?! pieces?)")
 ```
 
 ```{r}
-# For gen 4 and beyond
+# For Deoxys
+# Deoxys has multiple formes in gen 4 and onward
 gen_4_8_colnames <- c("Level", "Move", "Type", "Cat.", "Pwr.", "Acc.", "PP")
+
+learnset
+#Level
+#Normal Form 3-18
+#Attack Form 20-33
+#Defense Form 36-51
+#Speed Form 54-67
+
+#TMs
+#Breeding 
+#same
+
+#Move Tutor
+#Normal 116-127
+#Attack/Defense 130-142
+#Speed 145-169
 
 (byLevel <- learnset %>%
     str_subset("level") %>%
@@ -203,6 +224,51 @@ physTypes <- tibble(Types = c("Bug", "Fighting", "Flying", "Ghost", "Ground", "N
 "Deoxys"     "Wormadam"   "Giratina"   "Shaymin"    "Basculin"   "Darmanitan" "Tornadus"   "Thundurus"  "Landorus"  
 "Keldeo"     "Meloetta"   "Flabébé"    "Meowstic"   "Aegislash"  "Pumpkaboo"  "Gourgeist"  "Zygarde"    "Hoopa"     
 "Oricorio"   "Lycanroc"   "Wishiwashi" "Minior"  
+
 ```{r}
+#Deoxys
+(byLevel <- learnset %>%
+    str_subset("level") %>%
+    str_extract("(?<=\\{\\{learnlist/level\\d\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>%
+    as_tibble() %>%
+    separate(value, gen_4_8_colnames, sep = "\\|", extra = "drop") %>%
+    mutate(Method = "Level"))
+
+(byMachine <- learnset %>%
+  str_subset("tm") %>%
+  str_extract("(?<=\\{\\{learnlist/tm\\d\\|).*(?=\\}\\})") %>%
+  str_subset("NA", negate = TRUE) %>%
+  as_tibble() %>%
+  separate(value, gen_4_8_colnames, sep = "\\|", extra = "drop") %>%
+  mutate(Level = "", Method = "Machine"))
+
+(byBreed <- learnset %>%
+  str_subset("breed") %>%
+  str_extract("(?<=\\{\\{learnlist/breed\\d\\|).*(?=\\}\\})") %>%
+  str_subset("NA", negate = TRUE) %>% 
+  gsub("\\{\\{.*\\}\\}","",.)%>%
+  as_tibble() %>%
+  separate(value, gen_4_8_colnames, sep = "\\|", extra = "drop") %>%
+  mutate(Level = "", Method = "Breed"))
+
+(byTutor <- learnset %>%
+    str_subset("tutor") %>%
+    str_extract("(?<=\\{\\{learnlist/tutor\\d\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>%
+    as_tibble() %>%
+    separate(value, gen_4_8_colnames, sep = "\\|", extra = "drop") %>%
+    mutate(Level = "", Method = "Tutor"))
+
+(byEvent <- learnset %>%
+  str_subset("event") %>%
+  str_extract("(?<=\\{\\{learnlist/event\\d\\|).*(?=\\}\\})") %>%
+  gsub("\\{\\{.*\\}\\}","",.) %>% 
+  gsub("\\[.*\\]","",.) %>% 
+  str_subset("NA", negate = TRUE) %>%
+  as_tibble() %>%
+  separate(value, gen_4_8_colnames, sep = "\\|", extra = "drop") %>%
+  mutate(Level = "", Method = "Tutor", 
+         temp = NULL, temp2 = NULL, 'Event Mon' = NULL))
 
 ```
