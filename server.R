@@ -7,7 +7,7 @@ server <- function(input, output, session) {
   
   # translates into generation version
   verGen <- reactive({
-    romGen %>% filter(roman == input$genP3) %>% pull(versions)
+    romGen %>% filter(arabic == input$genP3) %>% pull(versions)
   })
   
   
@@ -213,7 +213,7 @@ mons <- reactive({
       
     }, error = function(err){
       
-      suppressWarnings(getLearnset_txt(input$mon2, genIntro()))
+      getLearnset_txt(input$mon2, genIntro())
       
     }, warning = function(warn){
       

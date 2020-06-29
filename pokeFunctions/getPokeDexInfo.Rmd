@@ -1,0 +1,261 @@
+```{r, message = FALSE}
+library(tidyverse)
+library(httr)
+library(rvest)
+library(jsonlite)
+library(parallel)
+```
+
+# Basic Pokedex Info  
+- Type/s  
+- Defensive  weaknesses  
+
+- Base Stats by Generation and forme    
+- Move pool distribution (pie chart?)
+```{r}
+
+#Type/s
+tryCatch({
+  allMons %>% 
+  filter(Type1 == "Water") %>% 
+  filter(Type2 == "Electric")
+} error = function(err){
+  allMons %>% 
+    filter(Type1 == "Water")
+})
+```
+
+```{r}
+#Type Chart Matchups
+
+#https://pokemondb.net/type/old
+#https://pokemondb.net/type
+#https://pokemondb.net/type/dual
+
+hgenold <- read_html("https://pokemondb.net/type/old")
+(gen2_5 <- hgenold %>% 
+  html_node("table") %>% 
+  html_table(fill = TRUE) %>% 
+  as_tibble() %>% 
+  mutate_all(as.character) %>% 
+  mutate(Nor = case_when(
+    is.na(Nor) ~ "",
+    TRUE ~ Nor
+  ))%>% 
+  rename(Type = names(.)[[1]]))
+
+(gen1 <- hgenold %>% 
+  html_nodes("table") %>% 
+  .[[2]] %>% 
+  html_table(fill = TRUE) %>% 
+  as_tibble() %>% 
+  mutate_all(as.character) %>% 
+  mutate(Nor = case_when(
+    is.na(Nor) ~ "",
+    TRUE ~ Nor
+  ))%>% 
+  rename(Type = names(.)[[1]]))
+
+gencurrent <- read_html("https://pokemondb.net/type")
+
+(gen6_8 <- gencurrent %>% 
+  html_node("table") %>% 
+  html_table(fill = TRUE) %>% 
+  as_tibble() %>% 
+  mutate_all(as.character) %>% 
+  mutate(Nor = case_when(
+    is.na(Nor) ~ "",
+    TRUE ~ Nor
+  )) %>% 
+  rename(Type = names(.)[[1]]))
+
+gendual_url <- read_html("https://pokemondb.net/type/dual")
+
+(gendual <- gendual_url %>% 
+  html_nodes("table") %>% 
+  html_table(fill = TRUE) %>% 
+  bind_rows() %>% 
+  as_tibble() %>% 
+  rename(Type = names(.)[[1]]) %>% 
+  separate(Type, c("Type1","Type2"), sep = "\\s", extra = "drop")) %>% 
+  filter(!str_detect(PKMN,"PKMN"))
+```
+
+# Base Stats by Generation Function
+
+```{r}
+Mon = "Hoopa"
+Gen = "VII"
+NatID = "720U"
+
+getStatsbyGen <- function(Mon = NULL, Gen, NatID = NULL){
+  
+  if(Gen =="I"){
+    range = Gen
+  }else if (Gen %in% c("II","III","IV","V")){
+    range = "II-V"
+  }else if (Gen == "VI"){
+    range = Gen
+  }else if (Gen == "VII"){
+    range = Gen
+  }else{
+    message("Error")
+  }
+
+  hstats_genX_url <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_{range})&action=edit", range = range))
+  
+  hstats_genX <- hstats_genX_url %>% 
+    html_node("textarea") %>% 
+    html_text() %>% 
+    strsplit("\\n") %>% 
+    .[[1]] 
+  
+  #Generation I
+  hstats_gen1 <- hstats_genX %>% 
+    str_subset("lopg1") %>% 
+    str_extract("(?<=\\{\\{lopg1/base\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>% 
+    as_tibble %>% 
+    separate(value, c("NatNo","Pokemon","HP","Atk","Def","Spe","Special"), sep = "\\|") 
+  
+  #Generation II - V
+  hstats_gen2_X <- hstats_genX %>% 
+    str_subset("lop") %>% 
+    str_extract("(?<=\\{\\{lop/base\\|).*(?=\\}\\})") %>%
+    str_subset("NA", negate = TRUE) %>% 
+    as_tibble %>% 
+    separate(value, c("NatNo","Pokemon","HP","Atk","Def","Spe","SpA","SpD"), sep = "\\|", extra = "drop") 
+  
+  tryCatch(
+    {
+      if (Gen == "I") {
+        df <- hstats_gen1 %>%
+          filter(Pokemon == Mon)
+      } else {
+        df <- hstats_gen2_X %>%
+          filter(Pokemon == Mon)
+      }
+      df <- try(df %>% filter(NatNo == NatID), silent = TRUE)
+    },
+    error = function(err) {
+      if (Gen == "I") {
+        df <- hstats_gen1
+      } else {
+        df <- hstats_gen2_X 
+      }
+    }
+  )
+    
+}
+
+(getStatsbyGen("Hoopa","VII","720U"))
+(getStatsbyGen(Gen = "VII"))
+```
+
+# All Stats
+```{r}
+library(parallel)
+
+#covers all generations with the same link
+gen_list = c("I","II","VI","VII")
+
+cl <- makeCluster(4)
+
+clusterExport(cl, c('getStatsbyGen','gen_list'))
+clusterEvalQ(cl,{
+  library(tidyverse)
+  library(httr)
+  library(rvest)
+  library(jsonlite)
+  NULL
+})
+
+allStatsbyGen <- (parLapplyLB(cl,gen_list, function(gen) getStatsbyGen(Gen = gen))) %>% bind_rows()
+stopCluster(cl)
+
+```
+
+#Get Unique ID table
+```{r}
+#Stats unique by forme
+
+(allUniqueStats <- allStatsbyGen %>% 
+  select(1,2) %>% 
+  separate(NatNo, c("Num","Version"), sep = "(?<=[0-9])(?=[A-Za-z])", extra = "drop"))
+```
+
+#Work
+
+```{r}
+#https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_I)&action=edit
+#https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_II-V)&action=edit
+
+range = "I"
+range = "II-V"
+range = "VI"
+range = "VII"
+
+hstats_genX_url <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_{range})&action=edit", range = range))
+
+hstats_genX <- hstats_genX_url %>% 
+  html_node("textarea") %>% 
+  html_text() %>% 
+  strsplit("\\n") %>% 
+  .[[1]] 
+
+#Generation I
+hstats_gen1 <- hstats_genX %>% 
+  str_subset("lopg1") %>% 
+  str_extract("(?<=\\{\\{lopg1/base\\|).*(?=\\}\\})") %>%
+  str_subset("NA", negate = TRUE) %>% 
+  as_tibble %>% 
+  separate(value, c("NatNo","Pokemon","HP","Atk","Def","Spe","Special"), sep = "\\|") 
+
+#Generation II - V
+hstats_genX %>% 
+  str_subset("lop") %>% 
+  str_extract("(?<=\\{\\{lop/base\\|).*(?=\\}\\})") %>%
+  str_subset("NA", negate = TRUE) %>% 
+  as_tibble %>% 
+  separate(value, c("NatNo","Pokemon","HP","Atk","Def","Spe","SpA","SpD"), sep = "\\|", extra = "drop") 
+
+#Generation VI (same as above)
+hstats_genX %>% 
+  str_subset("lop") %>% 
+  str_extract("(?<=\\{\\{lop/base\\|).*(?=\\}\\})") %>%
+  str_subset("NA", negate = TRUE) %>% 
+  as_tibble %>% 
+  separate(value, c("NatNo","Pokemon","HP","Atk","Def","Spe","SpA","SpD"), sep = "\\|", extra = "drop") 
+
+#Generation VII (same as above)
+hstats_genX %>% 
+  str_subset("lop") %>% 
+  str_extract("(?<=\\{\\{lop/base\\|).*(?=\\}\\})") %>%
+  str_subset("NA", negate = TRUE) %>% 
+  as_tibble %>% 
+  separate(value, c("NatNo","Pokemon","HP","Atk","Def","Spe","SpA","SpD"), sep = "\\|", extra = "drop")
+
+```
+
+#Get Move Pool Distribution
+
+```{r}
+library(plotly)
+
+romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
+                 roman = c("I","II","III","IV","V","VI","VII","VIII"),
+                 versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
+
+specTypes <- c("Dark", "Dragon", "Electric", "Fire", "Grass", "Ice", "Psychic", "Water")
+physTypes <- c("Bug", "Fighting", "Flying", "Ghost", "Ground", "Normal", "Poison", "Rock", "Steel")
+
+allEmTypes <- c(specTypes,physTypes)
+
+allTypes <- c(allEmTypes,"Fairy")
+
+bulb_learnset <- getLearnset_txt("Bulbasaur","I")
+
+pie(bulb_learnset$Type %>% table())
+
+plot_ly(bulb_learnset, labels = ~ Type, type = "pie")
+```
