@@ -29,7 +29,13 @@ name <- name %>%
   gsub("(Kommo|Jangmo|Hakamo).(O)","\\1-o",.) %>% 
   gsub("(Type) ","\\1: ",.)
 
-NS_sprites <- tibble(Name = name, Class = appearance, Url = norm_shiny_sprites)
+(NS_sprites <- tibble(Name = name, Class = appearance, Url = norm_shiny_sprites))
+
+save(NS_sprites,file = "NS_sprites.RData")
+
+# NS_sprites %>% 
+#   filter(Name == "Bulbasaur", Class == "normal") %>% 
+#   pull(Url)
 ```
 
 #Fix edge cases

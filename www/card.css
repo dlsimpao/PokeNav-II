@@ -1,8 +1,7 @@
 .card {
   box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
   transition: 0.3s;
-  width: 100%;
-  height: auto;
+  width: 50%;
   border-radius: 5px;
 }
 
@@ -11,5 +10,5 @@
 }
 
 .container {
-  padding: 500px 16px;
+  padding: 2px 16px;
 }

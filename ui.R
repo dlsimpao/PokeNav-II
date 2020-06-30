@@ -1,6 +1,10 @@
 
 
 ui <- fluidPage(
+  tags$head(
+    tags$link(rel = "stylesheet", type = "text/css", href = "card.css"),
+    tags$link(rel = "stylesheet", type = "text/css", href = "polaroid.css")
+  ),
   navbarPage("PokeNav II:",
              id = "pages",
              tabPanel(
@@ -33,13 +37,18 @@ ui <- fluidPage(
                  checkboxGroupInput("dex-filter", "Select Pokemon Type(s)", allTypes)
                ),
                mainPanel(
+                 useShinyjs(),
                  actionButton("learn2", "See Learnset"),
                  actionButton("dex-info2","See Dex Entry"),
                  helpText("Note: Move Categories were specified further in Generation 4 and beyond."),
                  helpText("Only shows learnset in generation introduced."),
                  br(),
                  br(),
-                 DT::dataTableOutput("tbl2")
+                 DT::dataTableOutput("tbl2"),
+                 div(id = "dex2",
+                   class = "card",
+                   tags$img(uiOutput("sprite2"))
+                 ) %>% shinyjs::hidden()
                )
              ),
              tabPanel(

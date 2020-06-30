@@ -21,6 +21,9 @@ romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
                  roman = c("I","II","III","IV","V","VI","VII","VIII"),
                  versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
 
+allTypes <- c("Dark", "Dragon", "Electric", "Fire", "Grass", "Ice", "Psychic", "Water", "Bug",
+              "Fighting", "Flying", "Ghost", "Ground", "Normal", "Poison", "Rock", "Steel", "Fairy")
+
 getLearnset_txt <- function(mon, gen) {
   h <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title={Mon}_(Pok%C3%A9mon)/Generation_{gen}_learnset&action=edit", Mon = mon, gen = gen))
   

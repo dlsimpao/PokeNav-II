@@ -218,8 +218,24 @@ mons <- reactive({
     }, warning = function(warn){
       
       print("Error in learnsetP2")
+      
     })
-    
+  })
+  
+  spriteP2 <- reactive(NS_sprites %>% filter(Name == input$mon2, Class == "normal") %>% pull(Url))
+  
+  observeEvent(input$learn2,{
+    if(input$learn2 > 1){
+      toggle(id = "tbl2")
+    }
+    if(input$`dex-info2` > 0){
+      hide("dex2")
+    }
+  })
+  
+  observeEvent(input$`dex-info2`,{
+    toggle("dex2")
+    hide("tbl2")
   })
   
   observe({
@@ -233,6 +249,12 @@ mons <- reactive({
   
   output$tbl2 <- DT::renderDataTable(learnsetP2())
   
+  output$sprite2 <- renderUI({
+    tags$img(
+      src = spriteP2(), width = "250", height = "250", 
+      style = "display: block; margin-left: auto; margin-right: auto"
+    )
+  })
   
   ######### Page 3 ##########
   #Reactive for future applications
@@ -246,7 +268,13 @@ mons <- reactive({
     allTMs_byGen %>% 
       filter(Version == verGen())
   })
+  
   output$tbl3.2 <- DT::renderDataTable(TM_info())
+  
+  session$onSessionEnded(function() {
+    closeAllConnections()
+    gc()
+  })
 }
 
 # Notice convention

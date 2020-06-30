@@ -19,12 +19,15 @@ library(parallel)
 #3. Generalize item locations to all versions
 #4. 
 
+
 specTypes <- c("Dark", "Dragon", "Electric", "Fire", "Grass", "Ice", "Psychic", "Water")
 physTypes <- c("Bug", "Fighting", "Flying", "Ghost", "Ground", "Normal", "Poison", "Rock", "Steel")
 
-allEmTypes <- c(specTypes,physTypes)
+allEmTypes <- list(Special = specTypes, Physical = physTypes)
 
-allTypes <- c(allEmTypes,"Fairy")
+
+allTypes <- c("Dark", "Dragon", "Electric", "Fire", "Grass", "Ice", "Psychic", "Water", "Bug",
+              "Fighting", "Flying", "Ghost", "Ground", "Normal", "Poison", "Rock", "Steel", "Fairy")
 
 romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
                  roman = c("I","II","III","IV","V","VI","VII","VIII"),
@@ -38,7 +41,14 @@ getGenMons_info <- function(genNo){
   
   gen_arabic <- romGen %>% filter(roman == genNo) %>% pull(arabic)
   
-  if(gen_arabic < 6){
+  
+  if(gen_arabic == 2){
+    genMons <- h %>%
+      html_nodes("table") %>%
+      .[[1]] %>%
+      html_table(fill = TRUE) %>%
+      as.data.frame() 
+  }else if(gen_arabic < 6){
     genMons <- h %>%
       html_nodes("table") %>%
       .[[2]] %>%
@@ -460,22 +470,5 @@ alola_byloc <- lapply(alolaLinks,function(link) getG7Mon(link)) %>% bind_rows()
 alola <- alola_byloc$src %>% unique()
 #save(alola_byloc, file = "alolaMon.RData")
 
-
-
-
-# cl <- makeCluster(4)
-# clusterEvalQ(cl, {
-#   library(tidyverse)
-#   library(jsonlite)
-#   library(lubridate)
-#   library(httr)
-#   library(rvest)
-#   NULL
-# })
-
-# clusterExport(cl,c("getLocationAreas","getAreaMons","EmLoc"), envir = environment())
-
-# EmLocAreas <- parSapply(cl,EmLoc, function(loc) getLocationAreas(loc))
-# clusterExport(cl,c("EmLocAreas"), envir = environment())
-
-# stopCluster(cl)
+#load
+load("NS_sprites.RData")
