@@ -4,7 +4,7 @@ Supplemental tool for Pokemon Emerald
 # Aspects to Tackle Next:  
 
  - Conceptualize what aspects should a Pokedex entry contain  
- - Abilities, Stats, EVs, Catch Rate, Locations, Sprites? found***        
+ - Basic Dex Entry, Abilities, Stats, EVs, Catch Rate, Locations, Sprites? partially done***        
  
  - Integrate different versions within a generation ***         
  
@@ -12,12 +12,11 @@ Supplemental tool for Pokemon Emerald
 
  - Figure out section for move tutors (https://bulbapedia.bulbagarden.net/wiki/Move_Tutor#Free_Move_Tutors)  
  
- - Address Pokemon with different forms  (api calls, scraping) ***  
- - Test new learnset function to all Pokemon ****
+ - Address Pokemon with different formes  (scraping) ***  
+ 
  - Test C++ alternative to better performance  
  - Find Pokemon not available in certain generations  
 
- - Create section for Breeding Dex ***   
  - Figure out closing connections *
 
 ## Finished:
@@ -27,6 +26,7 @@ Supplemental tool for Pokemon Emerald
  - Fix ItemDex descriptions [done]   
  - Learnset shown is only for the generation introduced, option for latest learnset? [done]
  - Fix romGen translations (easy) ****  
+ - Test new learnset function to all Pokemon ****  
 
 ## Other Ideas  
  - Items for other generation games? (not priority)  
