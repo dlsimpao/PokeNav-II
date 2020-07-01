@@ -87,22 +87,22 @@ gendual_url <- read_html("https://pokemondb.net/type/dual")
 Mon = "Hoopa"
 Gen = "VII"
 NatID = "720U"
-
+Gen = "VI"
 getStatsbyGen <- function(Mon = NULL, Gen, NatID = NULL){
-  
+  gen_names = ""
   if(Gen =="I"){
-    range = Gen
+    gen_names = Gen
   }else if (Gen %in% c("II","III","IV","V")){
-    range = "II-V"
+    gen_names = "II-V"
   }else if (Gen == "VI"){
-    range = Gen
+    gen_names = Gen
   }else if (Gen == "VII"){
-    range = Gen
+    gen_names = Gen
   }else{
     message("Error")
   }
 
-  hstats_genX_url <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_{range})&action=edit", range = range))
+  hstats_genX_url <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_{gen_names})&action=edit", gen_names = gen_names))
   
   hstats_genX <- hstats_genX_url %>% 
     html_node("textarea") %>% 
@@ -126,30 +126,36 @@ getStatsbyGen <- function(Mon = NULL, Gen, NatID = NULL){
     as_tibble %>% 
     separate(value, c("NatNo","Pokemon","HP","Atk","Def","Spe","SpA","SpD"), sep = "\\|", extra = "drop") 
   
-  tryCatch(
-    {
-      if (Gen == "I") {
-        df <- hstats_gen1 %>%
-          filter(Pokemon == Mon)
-      } else {
-        df <- hstats_gen2_X %>%
-          filter(Pokemon == Mon)
-      }
-      df <- try(df %>% filter(NatNo == NatID), silent = TRUE)
-    },
-    error = function(err) {
-      if (Gen == "I") {
-        df <- hstats_gen1
-      } else {
-        df <- hstats_gen2_X 
-      }
+    if (Gen == "I" & !is.null(Mon)) {
+      #print("First")
+      df <- hstats_gen1 %>%
+        filter(Pokemon == Mon)
+    } else if (Gen != "I" & !is.null(Mon)){
+      #print("Second")
+      df <- hstats_gen2_X %>%
+        filter(Pokemon == Mon)
+    } else if (Gen == "I"){
+      #print("Third")
+      df <- hstats_gen1
+    } else{
+      #print("Fourth")
+      df <- hstats_gen2_X 
     }
-  )
     
+    if(!is.null(NatID)){
+      df <- df %>% filter(NatNo == NatID)
+    }
+    
+    df <- df %>% mutate(Gen = Gen)
 }
 
 (getStatsbyGen("Hoopa","VII","720U"))
+
+(getStatsbyGen(Gen = "V"))
+(getStatsbyGen(Gen = "VI"))
 (getStatsbyGen(Gen = "VII"))
+
+(getStatsbyGen("Hoopa","VII")) %>% filter(!str_detect(NatNo, "\\D"))
 ```
 
 # All Stats
@@ -157,7 +163,7 @@ getStatsbyGen <- function(Mon = NULL, Gen, NatID = NULL){
 library(parallel)
 
 #covers all generations with the same link
-gen_list = c("I","II","VI","VII")
+gen_list = c("I","II","III","IV","V","VI","VII")
 
 cl <- makeCluster(4)
 
@@ -171,8 +177,13 @@ clusterEvalQ(cl,{
 })
 
 allStatsbyGen <- (parLapplyLB(cl,gen_list, function(gen) getStatsbyGen(Gen = gen))) %>% bind_rows()
+allStatsbyGen <- allStatsbyGen %>% select(1:7,9,10,8)
 stopCluster(cl)
 
+save(allStatsbyGen, file = "AllStatsGEN1_8.RData")
+allStatsbyGen %>% 
+  filter(Gen == "VI")
+#names(allStatsbyGen)
 ```
 
 #Get Unique ID table
@@ -190,12 +201,12 @@ stopCluster(cl)
 #https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_I)&action=edit
 #https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_II-V)&action=edit
 
-range = "I"
-range = "II-V"
-range = "VI"
-range = "VII"
+gen_names = "I"
+gen_names = "II-V"
+gen_names = "VI"
+gen_names = "VII"
 
-hstats_genX_url <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_{range})&action=edit", range = range))
+hstats_genX_url <- read_html(str_glue("https://bulbapedia.bulbagarden.net/w/index.php?title=List_of_Pok%C3%A9mon_by_base_stats_(Generation_{gen_names})&action=edit", gen_names = gen_names))
 
 hstats_genX <- hstats_genX_url %>% 
   html_node("textarea") %>% 

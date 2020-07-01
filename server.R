@@ -10,6 +10,14 @@ server <- function(input, output, session) {
     romGen %>% filter(arabic == input$genP3) %>% pull(versions)
   })
   
+  monP1 <- reactive({
+    req(input$mon != "-")
+    if(input$mon1.2 == "-"){
+      input$mon
+    } else {
+      input$mon1.2
+    }
+  })
   
   location <- reactive({
     req(input$gen %in% romGen$roman)
@@ -136,14 +144,11 @@ mons <- reactive({
     }
   })
   
+  
   ### Learnset by Mon ###
   learnset <- eventReactive(input$learn,{
     req(input$mon != "-")
-    if(input$mon1.2 == "-"){
-      getLearnset_txt(input$mon, gen = input$gen)
-    }else{
-      getLearnset_txt(input$mon1.2, gen = input$gen)
-    }
+    getLearnset_txt(monP1(), gen = input$gen)
   })
   
   
@@ -168,10 +173,107 @@ mons <- reactive({
   observe({
     updateSelectInput(session, "mon1.2", choices = c("-", evolve()))
   })
+  
+  
+  observeEvent(input$learn,{
+    if(monP1() != "-"){
+      shinyjs::show("moveplot1")
+      shinyjs::show("tbl")
+    }
+    if(input$`dex-info` > 0){
+      hide("dex")
+      hide("dex1.1")
+    }
+  })
+  
+  # Pokedex Info Page 1
+  
+  observeEvent(input$`dex-info`,{
+    if(input$mon != "-"){
+      toggle("dex")
+      toggle("dex1.1")
+    }
+    hide("moveplot1")
+    hide("tbl")
+  })
 
+  # Learnset Pie
+  output$learnplot <- renderPlotly({
+    req(input$mon != "-")
+    plot_ly(learnset(), labels = ~ Type, type = "pie")
+  })
+  
+  
   output$tbl <- DT::renderDataTable(learnset())
+  
+  #Sprites page 1
+  sprite <- reactive(NS_sprites %>% filter(Name == monP1(), Class == "normal") %>% pull(Url))
+  
+  output$sprite <- renderUI({
+    tags$img(
+      src = sprite(), width = "200", height = "200",
+      style = "display: block; margin-left: auto; margin-right: auto;"
+    )
+  })
+  
+  
+  # Stats chart page 1
+  stats_chart <- reactive({
+    if(input$gen == "I"){
+      allStatsbyGen %>% 
+        filter(Pokemon == monP1(), Gen == input$gen, !str_detect(NatNo, "\\D")) %>% 
+        select(HP, Atk, Def, Special, Spe) 
+    }else{
+      allStatsbyGen %>% 
+        filter(Pokemon == monP1(), Gen == input$gen, !str_detect(NatNo, "\\D")) %>% 
+        select(HP, Atk, Def, SpA, SpD, Spe)
+    }
+  })
+  
+  label2 <- reactive({
+    if(input$gen == "I"){
+      t = c("HP", "ATK", "DEF", "SPD", "Special")
+    }else{
+      t = c("HP", "ATK", "DEF", "SP.ATK", "SP.DEF", "SPD")
+    }
+  })
+  
+  output$dexplot <- renderPlotly({
+    req(input$mon != "-")
+    
+    plot_ly(
+      type = "scatterpolar",
+      mode = "closest",
+      fill = "toself"
+    ) %>%
+      add_trace(
+        r = as.matrix(stats_chart()),
+        theta = label2(),
+        showlegend = TRUE,
+        mode = "markers",
+        name = monP1()
+      )  %>%
+      layout(
+        title = list(
+          text = "Base Stats",
+          x = 0.46,
+          font = list(
+            size = 30
+          )
+        ),
+        
+        margin = list(t = 100),
+        polar = list(
+          radialaxis = list(
+            visible = T,
+            range = c(0, 255)
+          )
+        ),
+        showlegend = TRUE
+      )
+  })
 
-########## Page 2 ############
+######################################## Page 2 ################################################
   
   intGen2 <- reactive({
     romGen %>% filter(numeral == input$gen2) %>% pull(arabic)
@@ -209,7 +311,7 @@ mons <- reactive({
     req(input$mon2 != "-")
     df <- tryCatch({
       
-      suppressWarnings(getLearnset_txt(input$mon2, input$`learnset-filter2`))
+      suppressWarnings(getLearnset_txt(input$mon2, input$`gen-filter2`))
       
     }, error = function(err){
       
@@ -222,20 +324,33 @@ mons <- reactive({
     })
   })
   
+  # Learnset Pie
+  output$learnplot2 <- renderPlotly({
+    req(input$mon2 != "-")
+    plot_ly(learnsetP2(), labels = ~ Type, type = "pie")
+  })
+  
   spriteP2 <- reactive(NS_sprites %>% filter(Name == input$mon2, Class == "normal") %>% pull(Url))
   
   observeEvent(input$learn2,{
-    if(input$learn2 > 1){
-      toggle(id = "tbl2")
+    if(input$mon2 != "-"){
+      shinyjs::show("moveplot2")
+      shinyjs::show("tbl2")
     }
+    
     if(input$`dex-info2` > 0){
       hide("dex2")
+      hide("dex2.1")
     }
   })
   
   observeEvent(input$`dex-info2`,{
-    toggle("dex2")
+    if(input$mon2 != "-"){
+      toggle("dex2")
+      toggle("dex2.1")
+    }
     hide("tbl2")
+    hide("moveplot2")
   })
   
   observe({
@@ -243,7 +358,7 @@ mons <- reactive({
   })
   
   observe({
-    updateSelectInput(session,"learnset-filter2", choices = genLearnset2(), selected = genIntro())
+    updateSelectInput(session,"gen-filter2", choices = genLearnset2(), selected = genIntro())
   })
   
   
@@ -251,9 +366,64 @@ mons <- reactive({
   
   output$sprite2 <- renderUI({
     tags$img(
-      src = spriteP2(), width = "250", height = "250", 
-      style = "display: block; margin-left: auto; margin-right: auto"
+      src = spriteP2(), width = "200", height = "200",
+      style = "display: block; margin-left: auto; margin-right: auto;"
     )
+  })
+  
+  stats_chartP2 <- reactive({
+    if(input$`gen-filter2` == "I"){
+      allStatsbyGen %>% 
+        filter(Pokemon == input$mon2, Gen == input$`gen-filter2`, !str_detect(NatNo, "\\D")) %>% 
+        select(HP,Atk,Def,Special,Spe) 
+    }else{
+      allStatsbyGen %>% 
+        filter(Pokemon == input$mon2, Gen == input$`gen-filter2`, !str_detect(NatNo, "\\D")) %>% 
+        select(HP, Atk, Def, SpA, SpD, Spe)
+    }
+  })
+  
+  label <- reactive({
+    if(input$`gen-filter2` == "I"){
+      t = c("HP", "ATK", "DEF", "SPD", "Special")
+    }else{
+      t = c("HP", "ATK", "DEF", "SP.ATK", "SP.DEF", "SPD")
+    }
+  })
+  
+  output$dexplot2 <- renderPlotly({
+    req(input$mon2 != "-")
+    
+    plot_ly(
+      type = "scatterpolar",
+      mode = "closest",
+      fill = "toself"
+    ) %>%
+      add_trace(
+        r = as.matrix(stats_chartP2()),
+        theta = label(),
+        showlegend = TRUE,
+        mode = "markers",
+        name = input$mon2
+      )  %>%
+      layout(
+        title = list(
+          text = "Base Stats",
+          x = 0.46,
+          font = list(
+            size = 30
+          )
+        ),
+        
+        margin = list(t = 100),
+        polar = list(
+          radialaxis = list(
+            visible = T,
+            range = c(0, 255)
+          )
+        ),
+        showlegend = TRUE
+      )
   })
   
   ######### Page 3 ##########

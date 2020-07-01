@@ -38,7 +38,7 @@ romGen <- tibble(arabic = c(1,2,3,4,5,6,7,8),
                  roman = c("I","II","III","IV","V","VI","VII","VIII"),
                  versions = c("red-blue","gold-silver","ruby-sapphire","diamond-pearl","black-white","x-y","sun-moon","sword-shield"))
 
-genNo = "III"
+genNo = "VI"
 
 getGenMons_info <- function(genNo){
   h <- read_html(str_glue("https://en.wikipedia.org/wiki/List_of_generation_{num}_Pok%C3%A9mon", num = genNo), encoding = "UTF-8")
@@ -159,7 +159,7 @@ getGenMons_info <- function(genNo){
 }
 
 
-suppressMessages(getGenMons_info("II"))
+suppressMessages(getGenMons_info("VI"))
 (allMons <- lapply(romGen$roman, function(NUM) suppressMessages(getGenMons_info(NUM))) %>% bind_rows)
 ```
 

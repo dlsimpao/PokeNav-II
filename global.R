@@ -472,3 +472,4 @@ alola <- alola_byloc$src %>% unique()
 
 #load
 load("NS_sprites.RData")
+load("AllStatsGEN1_8.RData")
