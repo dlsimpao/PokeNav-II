@@ -2,6 +2,7 @@ library(shiny)
 library(shinythemes)
 library(shinycssloaders)
 library(shinyWidgets)
+library(shinyjs)
 
 library(tidyverse)
 library(ggfortify)
@@ -45,7 +46,7 @@ getGenMons_info <- function(genNo){
   if(gen_arabic == 2){
     genMons <- h %>%
       html_nodes("table") %>%
-      .[[1]] %>%
+      .[[2]] %>%
       html_table(fill = TRUE) %>%
       as.data.frame() 
   }else if(gen_arabic < 6){
